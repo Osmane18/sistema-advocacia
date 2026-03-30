@@ -59,6 +59,7 @@ export default function Clients() {
   async function handleSave(e) {
     e.preventDefault()
     if (!form.name.trim()) { toast.error('Nome obrigatorio'); return }
+    if (!user) { alert('Sessao expirada. Recarregue a pagina e faca login novamente.'); return }
     setSaving(true)
     try {
       if (editingId) {
@@ -69,15 +70,17 @@ export default function Clients() {
         if (error) throw error
         toast.success('Cliente atualizado!')
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('clients')
           .insert({ ...form, created_by: user.id })
+          .select()
         if (error) throw error
         toast.success('Cliente cadastrado!')
       }
       setModalOpen(false)
       loadClients()
     } catch (err) {
+      alert('Erro ao salvar: ' + (err.message || JSON.stringify(err)))
       toast.error('Erro ao salvar: ' + err.message)
     } finally {
       setSaving(false)
