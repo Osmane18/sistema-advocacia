@@ -7,4 +7,12 @@ if (!supabaseUrl || !supabaseKey) {
   console.error('Variaveis de ambiente do Supabase nao configuradas. Verifique o arquivo .env')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    storageKey: 'sistema-advocacia-auth',
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+    lock: async (_name, _acquireTimeout, fn) => fn()
+  }
+})
