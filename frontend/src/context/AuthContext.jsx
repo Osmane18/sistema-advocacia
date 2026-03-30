@@ -26,12 +26,19 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // Timeout de seguranca: se demorar mais de 5 segundos, para de carregar
+    const timeout = setTimeout(() => setLoading(false), 5000)
+
     // Verifica sessao atual
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchProfile(session.user.id)
       }
+      setLoading(false)
+    }).catch(() => {
+      clearTimeout(timeout)
       setLoading(false)
     })
 
