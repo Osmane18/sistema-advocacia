@@ -6,26 +6,25 @@ import { ptBR } from 'date-fns/locale'
 
 function StatCard({ icon, label, value, color, loading }) {
   return (
-    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 20px' }}>
       <div style={{
-        width: 48,
-        height: 48,
-        borderRadius: 12,
+        width: 44,
+        height: 44,
+        borderRadius: 10,
         background: color + '18',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 22,
-        flexShrink: 0
+        fontSize: 20
       }}>
         {icon}
       </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      <div>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{label}</div>
         {loading ? (
-          <div className="skeleton" style={{ width: 60, height: 24 }} />
+          <div className="skeleton" style={{ width: 70, height: 24 }} />
         ) : (
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#1A1A2E', wordBreak: 'break-word', lineHeight: 1.2 }}>{value}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.2 }}>{value}</div>
         )}
       </div>
     </div>
