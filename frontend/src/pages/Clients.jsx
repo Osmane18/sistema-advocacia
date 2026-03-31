@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
+import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
 
 const emptyForm = {
@@ -11,6 +13,7 @@ const emptyForm = {
 
 export default function Clients() {
   const { user } = useAuth()
+  const showError = useError()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -18,6 +21,7 @@ export default function Clients() {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null) // cliente a excluir
 
   useEffect(() => { loadClients() }, [])
 
@@ -31,7 +35,7 @@ export default function Clients() {
       if (error) throw error
       setClients(data || [])
     } catch (err) {
-      toast.error('Erro ao carregar clientes: ' + err.message)
+      showError('Erro ao carregar clientes: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
     }
@@ -58,8 +62,8 @@ export default function Clients() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.name.trim()) { toast.error('Nome obrigatorio'); return }
-    if (!user) { alert('Sessao expirada. Recarregue a pagina e faca login novamente.'); return }
+    if (!form.name.trim()) { showError('O nome do cliente é obrigatório.', 'Campo Obrigatório'); return }
+    if (!user) { showError('Sessão expirada. Recarregue a página e faça login novamente.', 'Sessão Expirada'); return }
     setSaving(true)
     try {
       if (editingId) {
@@ -80,22 +84,26 @@ export default function Clients() {
       setModalOpen(false)
       loadClients()
     } catch (err) {
-      alert('Erro ao salvar: ' + (err.message || JSON.stringify(err)))
-      toast.error('Erro ao salvar: ' + err.message)
+      showError('Erro ao salvar: ' + (err.message || JSON.stringify(err)), 'Erro ao Salvar')
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(client) {
-    if (!window.confirm(`Excluir o cliente "${client.name}"? Esta acao nao pode ser desfeita.`)) return
+    setConfirmDelete(client)
+  }
+
+  async function confirmDeleteClient() {
+    const client = confirmDelete
+    setConfirmDelete(null)
     try {
       const { error } = await supabase.from('clients').delete().eq('id', client.id)
       if (error) throw error
-      toast.success('Cliente excluido!')
+      toast.success('Cliente excluído!')
       loadClients()
     } catch (err) {
-      toast.error('Erro ao excluir: ' + err.message)
+      showError('Erro ao excluir: ' + err.message, 'Erro ao Excluir')
     }
   }
 
@@ -199,6 +207,15 @@ export default function Clients() {
           </table>
         </div>
       </div>
+
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title="Excluir cliente"
+        message={`Tem certeza que deseja excluir o cliente "${confirmDelete?.name}"? Esta ação não pode ser desfeita.`}
+        onConfirm={confirmDeleteClient}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Modal novo/editar */}
       <Modal

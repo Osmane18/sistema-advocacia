@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
+import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
 
 const AREAS = ['Trabalhista', 'Civil', 'Criminal', 'Familia', 'Tributario', 'Empresarial', 'Previdenciario', 'Outros']
@@ -22,6 +24,7 @@ const emptyUpdate = { description: '', date: format(new Date(), 'yyyy-MM-dd') }
 
 export default function Processes() {
   const { user } = useAuth()
+  const showError = useError()
   const [processes, setProcesses] = useState([])
   const [clients, setClients] = useState([])
   const [lawyers, setLawyers] = useState([])
@@ -38,6 +41,8 @@ export default function Processes() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [savingUpdate, setSavingUpdate] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [confirmDeleteUpdate, setConfirmDeleteUpdate] = useState(null)
 
   useEffect(() => {
     loadAll()
@@ -59,7 +64,7 @@ export default function Processes() {
       setClients(cls || [])
       setLawyers(lwrs || [])
     } catch (err) {
-      toast.error('Erro ao carregar: ' + err.message)
+      showError('Erro ao carregar processos: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
     }
@@ -99,7 +104,7 @@ export default function Processes() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.number.trim()) { toast.error('Numero do processo obrigatorio'); return }
+    if (!form.number.trim()) { showError('O número do processo é obrigatório.', 'Campo Obrigatório'); return }
     setSaving(true)
     try {
       if (editingId) {
@@ -116,27 +121,32 @@ export default function Processes() {
       setModalOpen(false)
       loadAll()
     } catch (err) {
-      toast.error('Erro ao salvar: ' + err.message)
+      showError('Erro ao salvar: ' + err.message, 'Erro ao Salvar')
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(proc) {
-    if (!window.confirm(`Excluir o processo "${proc.number}"?`)) return
+    setConfirmDelete(proc)
+  }
+
+  async function confirmDeleteProcess() {
+    const proc = confirmDelete
+    setConfirmDelete(null)
     try {
       const { error } = await supabase.from('processes').delete().eq('id', proc.id)
       if (error) throw error
-      toast.success('Processo excluido!')
+      toast.success('Processo excluído!')
       loadAll()
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao excluir: ' + err.message, 'Erro ao Excluir')
     }
   }
 
   async function handleAddUpdate(e) {
     e.preventDefault()
-    if (!updateForm.description.trim()) { toast.error('Descricao obrigatoria'); return }
+    if (!updateForm.description.trim()) { showError('A descrição do andamento é obrigatória.', 'Campo Obrigatório'); return }
     setSavingUpdate(true)
     try {
       const { error } = await supabase.from('process_updates').insert({
@@ -154,24 +164,28 @@ export default function Processes() {
         .eq('process_id', selected.id)
         .order('date', { ascending: false })
       setUpdates(data || [])
-      // atualiza updated_at do processo
       await supabase.from('processes').update({ updated_at: new Date().toISOString() }).eq('id', selected.id)
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao adicionar andamento: ' + err.message, 'Erro ao Salvar')
     } finally {
       setSavingUpdate(false)
     }
   }
 
   async function handleDeleteUpdate(id) {
-    if (!window.confirm('Excluir este andamento?')) return
+    setConfirmDeleteUpdate(id)
+  }
+
+  async function confirmDeleteUpdateFn() {
+    const id = confirmDeleteUpdate
+    setConfirmDeleteUpdate(null)
     try {
       const { error } = await supabase.from('process_updates').delete().eq('id', id)
       if (error) throw error
       setUpdates(prev => prev.filter(u => u.id !== id))
-      toast.success('Andamento excluido!')
+      toast.success('Andamento excluído!')
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao excluir andamento: ' + err.message, 'Erro ao Excluir')
     }
   }
 
@@ -281,6 +295,24 @@ export default function Processes() {
           </table>
         </div>
       </div>
+
+      {/* Confirmação excluir processo */}
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title="Excluir processo"
+        message={`Tem certeza que deseja excluir o processo "${confirmDelete?.number}"? Esta ação não pode ser desfeita.`}
+        onConfirm={confirmDeleteProcess}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* Confirmação excluir andamento */}
+      <ConfirmModal
+        isOpen={!!confirmDeleteUpdate}
+        title="Excluir andamento"
+        message="Tem certeza que deseja excluir este andamento? Esta ação não pode ser desfeita."
+        onConfirm={confirmDeleteUpdateFn}
+        onCancel={() => setConfirmDeleteUpdate(null)}
+      />
 
       {/* Modal novo/editar */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Editar Processo' : 'Novo Processo'}>

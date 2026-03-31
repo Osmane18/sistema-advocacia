@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useError } from '../context/ErrorContext'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -52,6 +53,7 @@ const statusColors = {
 }
 
 export default function Dashboard() {
+  const showError = useError()
   const [stats, setStats] = useState({ clients: 0, processes: 0, events: 0, revenue: 0 })
   const [upcomingEvents, setUpcomingEvents] = useState([])
   const [recentProcesses, setRecentProcesses] = useState([])
@@ -102,7 +104,7 @@ export default function Dashboard() {
       setUpcomingEvents(eventsData || [])
       setRecentProcesses(processesData || [])
     } catch (err) {
-      console.error('Erro ao carregar dashboard:', err)
+      showError('Erro ao carregar o painel: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
     }

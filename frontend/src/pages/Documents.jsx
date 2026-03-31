@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
+import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
 
 const BUCKET = 'documentos'
@@ -24,6 +26,7 @@ function getFileIcon(type) {
 
 export default function Documents() {
   const { user } = useAuth()
+  const showError = useError()
   const [documents, setDocuments] = useState([])
   const [clients, setClients] = useState([])
   const [processes, setProcesses] = useState([])
@@ -33,6 +36,7 @@ export default function Documents() {
   const [filterProcess, setFilterProcess] = useState('')
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedProcess, setSelectedProcess] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const fileInputRef = useRef(null)
 
   useEffect(() => { loadAll() }, [])
@@ -50,7 +54,7 @@ export default function Documents() {
       setClients(cls || [])
       setProcesses(procs || [])
     } catch (err) {
-      toast.error('Erro ao carregar: ' + err.message)
+      showError('Erro ao carregar documentos: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
     }
@@ -94,7 +98,7 @@ export default function Documents() {
         if (dbError) throw dbError
         successCount++
       } catch (err) {
-        toast.error(`Erro ao enviar "${file.name}": ${err.message}`)
+        showError(`Erro ao enviar "${file.name}": ${err.message}`, 'Erro no Envio')
       }
     }
 
@@ -123,28 +127,31 @@ export default function Documents() {
       link.click()
       document.body.removeChild(link)
     } catch (err) {
-      toast.error('Erro ao baixar arquivo: ' + err.message)
+      showError('Erro ao baixar arquivo: ' + err.message, 'Erro ao Baixar')
     }
   }
 
   async function handleDelete(doc) {
-    if (!window.confirm(`Excluir o arquivo "${doc.name}"?`)) return
+    setConfirmDelete(doc)
+  }
+
+  async function confirmDeleteDoc() {
+    const doc = confirmDelete
+    setConfirmDelete(null)
     try {
-      // Remover do Storage
       const { error: storageError } = await supabase.storage
         .from(BUCKET)
         .remove([doc.file_path])
 
       if (storageError) console.warn('Aviso ao remover storage:', storageError.message)
 
-      // Remover do banco
       const { error: dbError } = await supabase.from('documents').delete().eq('id', doc.id)
       if (dbError) throw dbError
 
-      toast.success('Arquivo excluido!')
+      toast.success('Arquivo excluído!')
       loadAll()
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao excluir arquivo: ' + err.message, 'Erro ao Excluir')
     }
   }
 
@@ -266,6 +273,15 @@ export default function Documents() {
           </button>
         )}
       </div>
+
+      {/* Confirmação excluir documento */}
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title="Excluir documento"
+        message={`Tem certeza que deseja excluir o arquivo "${confirmDelete?.name}"? Esta ação não pode ser desfeita.`}
+        onConfirm={confirmDeleteDoc}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Tabela de documentos */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

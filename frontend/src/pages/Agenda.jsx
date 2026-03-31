@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
+import { useError } from '../context/ErrorContext'
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths,
@@ -25,6 +27,7 @@ const emptyForm = {
 
 export default function Agenda() {
   const { user } = useAuth()
+  const showError = useError()
   const [events, setEvents] = useState([])
   const [clients, setClients] = useState([])
   const [processes, setProcesses] = useState([])
@@ -35,6 +38,7 @@ export default function Agenda() {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => {
     loadAll()
@@ -57,7 +61,7 @@ export default function Agenda() {
       setClients(cls || [])
       setProcesses(procs || [])
     } catch (err) {
-      toast.error('Erro ao carregar agenda: ' + err.message)
+      showError('Erro ao carregar agenda: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
     }
@@ -87,7 +91,7 @@ export default function Agenda() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.title.trim() || !form.date) { toast.error('Titulo e data obrigatorios'); return }
+    if (!form.title.trim() || !form.date) { showError('Título e data são obrigatórios.', 'Campo Obrigatório'); return }
     setSaving(true)
     try {
       const payload = {
@@ -109,21 +113,26 @@ export default function Agenda() {
       setModalOpen(false)
       loadAll()
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao salvar evento: ' + err.message, 'Erro ao Salvar')
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Excluir este evento?')) return
+    setConfirmDelete(id)
+  }
+
+  async function confirmDeleteEvent() {
+    const id = confirmDelete
+    setConfirmDelete(null)
     try {
       const { error } = await supabase.from('events').delete().eq('id', id)
       if (error) throw error
-      toast.success('Evento excluido!')
+      toast.success('Evento excluído!')
       loadAll()
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao excluir evento: ' + err.message, 'Erro ao Excluir')
     }
   }
 
@@ -133,7 +142,7 @@ export default function Agenda() {
       if (error) throw error
       setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, completed: !e.completed } : e))
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao atualizar evento: ' + err.message, 'Erro')
     }
   }
 
@@ -348,6 +357,15 @@ export default function Agenda() {
           </div>
         </div>
       </div>
+
+      {/* Confirmação excluir evento */}
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title="Excluir evento"
+        message="Tem certeza que deseja excluir este evento? Esta ação não pode ser desfeita."
+        onConfirm={confirmDeleteEvent}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Modal novo/editar evento */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Editar Evento' : 'Novo Evento'}>

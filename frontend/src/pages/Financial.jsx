@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
+import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
+import { useError } from '../context/ErrorContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 const statusBadge = {
@@ -43,6 +45,7 @@ function SummaryCard({ label, value, icon, color, loading }) {
 
 export default function Financial() {
   const { user } = useAuth()
+  const showError = useError()
   const [records, setRecords] = useState([])
   const [clients, setClients] = useState([])
   const [processes, setProcesses] = useState([])
@@ -54,6 +57,7 @@ export default function Financial() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [stats, setStats] = useState({ total: 0, monthIn: 0, monthOut: 0, pending: 0 })
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   useEffect(() => { loadAll() }, [])
 
@@ -80,7 +84,7 @@ export default function Financial() {
       const pending = (recs || []).filter(r => r.status === 'pendente' || r.status === 'atrasado').reduce((s, r) => s + (r.amount || 0), 0)
       setStats({ total: totalReceita, monthIn, monthOut, pending })
     } catch (err) {
-      toast.error('Erro ao carregar: ' + err.message)
+      showError('Erro ao carregar financeiro: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
     }
@@ -109,7 +113,7 @@ export default function Financial() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.description.trim() || !form.amount) { toast.error('Descricao e valor obrigatorios'); return }
+    if (!form.description.trim() || !form.amount) { showError('Descrição e valor são obrigatórios.', 'Campo Obrigatório'); return }
     setSaving(true)
     try {
       const payload = {
@@ -133,21 +137,26 @@ export default function Financial() {
       setModalOpen(false)
       loadAll()
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao salvar lançamento: ' + err.message, 'Erro ao Salvar')
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Excluir este lancamento?')) return
+    setConfirmDelete(id)
+  }
+
+  async function confirmDeleteRecord() {
+    const id = confirmDelete
+    setConfirmDelete(null)
     try {
       const { error } = await supabase.from('financial_records').delete().eq('id', id)
       if (error) throw error
-      toast.success('Lancamento excluido!')
+      toast.success('Lançamento excluído!')
       loadAll()
     } catch (err) {
-      toast.error('Erro: ' + err.message)
+      showError('Erro ao excluir lançamento: ' + err.message, 'Erro ao Excluir')
     }
   }
 
@@ -261,6 +270,15 @@ export default function Financial() {
           </table>
         </div>
       </div>
+
+      {/* Confirmação excluir lançamento */}
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        title="Excluir lançamento"
+        message="Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita."
+        onConfirm={confirmDeleteRecord}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Modal */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Editar Lancamento' : 'Novo Lancamento'}>
