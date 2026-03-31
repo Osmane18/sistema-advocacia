@@ -6,26 +6,26 @@ import { ptBR } from 'date-fns/locale'
 
 function StatCard({ icon, label, value, color, loading }) {
   return (
-    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <div style={{
-        width: 52,
-        height: 52,
+        width: 48,
+        height: 48,
         borderRadius: 12,
         background: color + '18',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 24,
+        fontSize: 22,
         flexShrink: 0
       }}>
         {icon}
       </div>
-      <div>
-        <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>{label}</div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
         {loading ? (
-          <div className="skeleton" style={{ width: 60, height: 28 }} />
+          <div className="skeleton" style={{ width: 60, height: 24 }} />
         ) : (
-          <div style={{ fontSize: 26, fontWeight: 700, color: '#1A1A2E' }}>{value}</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#1A1A2E', wordBreak: 'break-word', lineHeight: 1.2 }}>{value}</div>
         )}
       </div>
     </div>
@@ -145,7 +145,7 @@ export default function Dashboard() {
       {/* Cards de estatisticas */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
         gap: 16,
         marginBottom: 28
       }}>
