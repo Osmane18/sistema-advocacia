@@ -54,7 +54,10 @@ const statusColors = {
 
 export default function Dashboard() {
   const showError = useError()
-  const [stats, setStats] = useState({ clients: 0, processes: 0, events: 0, revenue: 0 })
+  const [stats, setStats] = useState({
+    clients: 0, processes: 0, events: 0, revenue: 0,
+    processesEncerrados: 0, prazoVencido: 0, pendente: 0, documentos: 0
+  })
   const [upcomingEvents, setUpcomingEvents] = useState([])
   const [recentProcesses, setRecentProcesses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -75,17 +78,27 @@ export default function Dashboard() {
       const [
         { count: clientCount },
         { count: processCount },
+        { count: processEncerradoCount },
         { count: eventCount },
+        { count: prazoVencidoCount },
         { data: revenueData },
+        { data: pendingData },
+        { count: docCount },
         { data: eventsData },
         { data: processesData }
       ] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase.from('processes').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+        supabase.from('processes').select('*', { count: 'exact', head: true }).eq('status', 'encerrado'),
         supabase.from('events').select('*', { count: 'exact', head: true })
           .gte('date', weekStart).lte('date', weekEnd).eq('completed', false),
+        supabase.from('events').select('*', { count: 'exact', head: true })
+          .eq('type', 'prazo').lt('date', weekStart).eq('completed', false),
         supabase.from('financial_records').select('amount')
           .eq('status', 'pago').gte('paid_date', monthStart).lte('paid_date', monthEnd),
+        supabase.from('financial_records').select('amount')
+          .in('status', ['pendente', 'atrasado']),
+        supabase.from('documents').select('*', { count: 'exact', head: true }),
         supabase.from('events').select('id, title, type, date, time, clients(name)')
           .gte('date', weekStart).eq('completed', false)
           .order('date', { ascending: true }).limit(5),
@@ -94,12 +107,17 @@ export default function Dashboard() {
       ])
 
       const totalRevenue = revenueData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
+      const totalPendente = pendingData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
 
       setStats({
         clients: clientCount || 0,
         processes: processCount || 0,
+        processesEncerrados: processEncerradoCount || 0,
         events: eventCount || 0,
-        revenue: totalRevenue
+        prazoVencido: prazoVencidoCount || 0,
+        revenue: totalRevenue,
+        pendente: totalPendente,
+        documentos: docCount || 0
       })
       setUpcomingEvents(eventsData || [])
       setRecentProcesses(processesData || [])
@@ -133,8 +151,12 @@ export default function Dashboard() {
       }}>
         <StatCard icon="👥" label="Total de Clientes" value={stats.clients} color="#1B2B4B" loading={loading} />
         <StatCard icon="⚖️" label="Processos Ativos" value={stats.processes} color="#C9A84C" loading={loading} />
+        <StatCard icon="✅" label="Processos Encerrados" value={stats.processesEncerrados} color="#6b7280" loading={loading} />
         <StatCard icon="📅" label="Eventos Esta Semana" value={stats.events} color="#3b82f6" loading={loading} />
-        <StatCard icon="💰" label="Receita do Mes" value={formatCurrency(stats.revenue)} color="#22c55e" loading={loading} />
+        <StatCard icon="⏰" label="Prazos Vencidos" value={stats.prazoVencido} color="#ef4444" loading={loading} />
+        <StatCard icon="💰" label="Receita do Mês" value={formatCurrency(stats.revenue)} color="#22c55e" loading={loading} />
+        <StatCard icon="⚠️" label="Financeiro Pendente" value={formatCurrency(stats.pendente)} color="#f59e0b" loading={loading} />
+        <StatCard icon="📄" label="Total de Documentos" value={stats.documentos} color="#8b5cf6" loading={loading} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
