@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
 
-const AREAS = ['Trabalhista', 'Civil', 'Criminal', 'Familia', 'Tributario', 'Empresarial', 'Previdenciario', 'Outros']
+const AREAS = ['Trabalhista', 'Civil', 'Criminal', 'Família', 'Tributário', 'Empresarial', 'Previdenciário', 'Outros']
 
 const statusBadge = {
   ativo: 'badge-success',
