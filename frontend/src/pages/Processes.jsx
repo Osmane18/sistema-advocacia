@@ -109,12 +109,23 @@ export default function Processes() {
     try {
       if (editingId) {
         const { error } = await supabase.from('processes').update({
-          ...form, updated_at: new Date().toISOString()
+          ...form,
+          client_id: form.client_id || null,
+          lawyer_id: form.lawyer_id || null,
+          phase: form.phase || null,
+          description: form.description || null,
+          updated_at: new Date().toISOString()
         }).eq('id', editingId)
         if (error) throw error
         toast.success('Processo atualizado!')
       } else {
-        const { error } = await supabase.from('processes').insert(form)
+        const { error } = await supabase.from('processes').insert({
+          ...form,
+          client_id: form.client_id || null,
+          lawyer_id: form.lawyer_id || null,
+          phase: form.phase || null,
+          description: form.description || null
+        })
         if (error) throw error
         toast.success('Processo cadastrado!')
       }
