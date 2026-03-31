@@ -74,10 +74,9 @@ export default function Clients() {
         if (error) throw error
         toast.success('Cliente atualizado!')
       } else {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('clients')
           .insert({ ...form, created_by: user.id })
-          .select()
         if (error) throw error
         toast.success('Cliente cadastrado!')
       }
