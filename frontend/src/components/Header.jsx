@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext'
 import { useState, useEffect } from 'react'
 
 const pageTitles = {
-  '/': 'Dashboard',
+  '/': 'Painel',
   '/clientes': 'Clientes',
   '/processos': 'Processos',
   '/agenda': 'Agenda',
   '/financeiro': 'Financeiro',
   '/documentos': 'Documentos',
   '/perfil': 'Meu Perfil',
+  '/admin': 'Painel Admin',
 }
 
 export default function Header({ onMenuToggle }) {

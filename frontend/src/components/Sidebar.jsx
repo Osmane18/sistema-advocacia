@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: '🏠', end: true },
+  { to: '/', label: 'Painel', icon: '🏠', end: true },
   { to: '/clientes', label: 'Clientes', icon: '👥' },
   { to: '/processos', label: 'Processos', icon: '⚖️' },
   { to: '/agenda', label: 'Agenda', icon: '📅' },
