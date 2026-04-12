@@ -49,12 +49,16 @@ export default function Perfil() {
     if (senhas.nova !== senhas.confirmar) { toast.error('Senhas não conferem'); return }
     setSalvandoSenha(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: senhas.nova })
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo esgotado. Tente novamente.')), 10000)
+      )
+      const update = supabase.auth.updateUser({ password: senhas.nova })
+      const { error } = await Promise.race([update, timeout])
       if (error) throw error
       toast.success('Senha alterada com sucesso!')
       setSenhas({ nova: '', confirmar: '' })
     } catch (err) {
-      toast.error('Erro ao alterar senha: ' + err.message)
+      toast.error(err.message || 'Erro ao alterar senha')
     } finally {
       setSalvandoSenha(false)
     }
