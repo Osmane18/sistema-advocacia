@@ -142,10 +142,15 @@ export default function Documents() {
         `Olá${doc.clients?.name ? `, ${doc.clients.name}` : ''}! 👋\n\nSegue o documento: *${doc.name}*\n\n🔗 ${data.signedUrl}\n\n_(Link válido por 24 horas)_`
       )
 
-      if (num) {
-        window.open(`https://wa.me/55${num}?text=${msg}`, '_blank')
+      if (num && num.length >= 10) {
+        const a = document.createElement('a')
+        a.href = `https://wa.me/55${num}?text=${msg}`
+        a.target = '_blank'
+        a.rel = 'noopener noreferrer'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
       } else {
-        // Se não tem telefone, copia o link
         await navigator.clipboard.writeText(data.signedUrl)
         toast.success('Link copiado! Cole no WhatsApp do cliente.')
       }
