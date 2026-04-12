@@ -144,7 +144,7 @@ export default function Documents() {
 
       if (num && num.length >= 10) {
         const a = document.createElement('a')
-        a.href = `https://wa.me/55${num}?text=${msg}`
+        a.href = `https://web.whatsapp.com/send?phone=55${num}&text=${msg}`
         a.target = '_blank'
         a.rel = 'noopener noreferrer'
         document.body.appendChild(a)
