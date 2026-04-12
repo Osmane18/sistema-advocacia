@@ -45,7 +45,7 @@ export default function Documents() {
     setLoading(true)
     try {
       const [{ data: docs }, { data: cls }, { data: procs }] = await Promise.all([
-        supabase.from('documents').select('*, clients(name), processes(number), user_profiles(full_name)')
+        supabase.from('documents').select('*, clients(name), processes(number)')
           .order('created_at', { ascending: false }),
         supabase.from('clients').select('id, name').order('name'),
         supabase.from('processes').select('id, number').order('number')
