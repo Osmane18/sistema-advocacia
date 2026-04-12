@@ -7,6 +7,26 @@ import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
 
 const BUCKET = 'documentos'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+async function getSignedUrl(filePath, expiresIn) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token || SUPABASE_KEY
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${filePath}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ expiresIn }),
+    signal: AbortSignal.timeout(10000)
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Erro ao gerar link')
+  return `${SUPABASE_URL}/storage/v1${json.signedURL}`
+}
 
 function formatFileSize(bytes) {
   if (!bytes) return '-'
@@ -107,14 +127,9 @@ export default function Documents() {
 
   async function handleDownload(doc) {
     try {
-      const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(doc.file_path, 60) // URL valida por 60 segundos
-
-      if (error) throw error
-
+      const signedUrl = await getSignedUrl(doc.file_path, 60)
       const link = document.createElement('a')
-      link.href = data.signedUrl
+      link.href = signedUrl
       link.download = doc.name
       link.target = '_blank'
       document.body.appendChild(link)
@@ -127,19 +142,12 @@ export default function Documents() {
 
   async function handleWhatsApp(doc) {
     try {
-      // Gera link válido por 24 horas
-      const { data, error } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(doc.file_path, 86400)
-
-      if (error) throw error
-
-      // Busca telefone do cliente
+      const signedUrl = await getSignedUrl(doc.file_path, 86400)
       const phone = doc.clients?.phone || ''
       const num = phone.replace(/\D/g, '')
 
       const msg = encodeURIComponent(
-        `Olá${doc.clients?.name ? `, ${doc.clients.name}` : ''}! 👋\n\nSegue o documento: *${doc.name}*\n\n🔗 ${data.signedUrl}\n\n_(Link válido por 24 horas)_`
+        `Olá${doc.clients?.name ? `, ${doc.clients.name}` : ''}! 👋\n\nSegue o documento: *${doc.name}*\n\n🔗 ${signedUrl}\n\n_(Link válido por 24 horas)_`
       )
 
       if (num && num.length >= 10) {
@@ -151,7 +159,7 @@ export default function Documents() {
         a.click()
         document.body.removeChild(a)
       } else {
-        await navigator.clipboard.writeText(data.signedUrl)
+        await navigator.clipboard.writeText(signedUrl)
         toast.success('Link copiado! Cole no WhatsApp do cliente.')
       }
     } catch (err) {
