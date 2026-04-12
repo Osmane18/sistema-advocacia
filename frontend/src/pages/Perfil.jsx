@@ -1,15 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
 export default function Perfil() {
-  const { user, profile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     oab: profile?.oab || '',
     phone: profile?.phone || '',
   })
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        full_name: profile.full_name || '',
+        oab: profile.oab || '',
+        phone: profile.phone || '',
+      })
+    }
+  }, [profile])
   const [senhas, setSenhas] = useState({ nova: '', confirmar: '' })
   const [salvando, setSalvando] = useState(false)
   const [salvandoSenha, setSalvandoSenha] = useState(false)
@@ -24,6 +34,7 @@ export default function Perfil() {
         .update({ full_name: form.full_name, oab: form.oab, phone: form.phone })
         .eq('id', user.id)
       if (error) throw error
+      await refreshProfile()
       toast.success('Perfil atualizado!')
     } catch (err) {
       toast.error('Erro ao salvar: ' + err.message)

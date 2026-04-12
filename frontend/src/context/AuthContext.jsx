@@ -74,7 +74,11 @@ export function AuthProvider({ children }) {
     return diff
   }
 
-  const value = { user, profile, loading, signIn, signOut, acessoLiberado, diasRestantes }
+  async function refreshProfile() {
+    if (user) await fetchProfile(user.id)
+  }
+
+  const value = { user, profile, loading, signIn, signOut, acessoLiberado, diasRestantes, refreshProfile }
 
   return (
     <AuthContext.Provider value={value}>
