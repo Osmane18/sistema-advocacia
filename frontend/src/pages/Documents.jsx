@@ -45,7 +45,7 @@ export default function Documents() {
     setLoading(true)
     try {
       const [{ data: docs }, { data: cls }, { data: procs }] = await Promise.all([
-        supabase.from('documents').select('*, clients(name), processes(number)')
+        supabase.from('documents').select('*, clients(name, phone), processes(number)')
           .order('created_at', { ascending: false }),
         supabase.from('clients').select('id, name').order('name'),
         supabase.from('processes').select('id, number').order('number')
@@ -122,6 +122,35 @@ export default function Documents() {
       document.body.removeChild(link)
     } catch (err) {
       showError('Erro ao baixar arquivo: ' + err.message, 'Erro ao Baixar')
+    }
+  }
+
+  async function handleWhatsApp(doc) {
+    try {
+      // Gera link válido por 24 horas
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(doc.file_path, 86400)
+
+      if (error) throw error
+
+      // Busca telefone do cliente
+      const phone = doc.clients?.phone || ''
+      const num = phone.replace(/\D/g, '')
+
+      const msg = encodeURIComponent(
+        `Olá${doc.clients?.name ? `, ${doc.clients.name}` : ''}! 👋\n\nSegue o documento: *${doc.name}*\n\n🔗 ${data.signedUrl}\n\n_(Link válido por 24 horas)_`
+      )
+
+      if (num) {
+        window.open(`https://wa.me/55${num}?text=${msg}`, '_blank')
+      } else {
+        // Se não tem telefone, copia o link
+        await navigator.clipboard.writeText(data.signedUrl)
+        toast.success('Link copiado! Cole no WhatsApp do cliente.')
+      }
+    } catch (err) {
+      showError('Erro ao gerar link: ' + err.message, 'Erro')
     }
   }
 
@@ -328,6 +357,14 @@ export default function Documents() {
                     <td>{formatDate(doc.created_at)}</td>
                     <td>
                       <div className="table-actions">
+                        <button
+                          className="btn-icon"
+                          onClick={() => handleWhatsApp(doc)}
+                          title={doc.clients?.phone ? `Enviar para ${doc.clients.name} no WhatsApp` : 'Copiar link para WhatsApp'}
+                          style={{ color: '#22c55e' }}
+                        >
+                          💬
+                        </button>
                         <button
                           className="btn-icon"
                           onClick={() => handleDownload(doc)}
