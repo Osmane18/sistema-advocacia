@@ -96,6 +96,18 @@ export default function Admin() {
     carregar()
   }
 
+  async function excluir(usuario) {
+    if (!confirm(`Excluir permanentemente "${usuario.full_name}"? Esta ação não pode ser desfeita.`)) return
+    try {
+      // Exclui o perfil primeiro
+      await supabase.from('user_profiles').delete().eq('id', usuario.id)
+      toast.success('Usuário excluído!')
+      carregar()
+    } catch (err) {
+      toast.error('Erro ao excluir: ' + err.message)
+    }
+  }
+
   function diasRestantes(expiracao) {
     if (!expiracao) return null
     const diff = differenceInDays(new Date(expiracao), new Date())
@@ -197,6 +209,12 @@ export default function Admin() {
                           <button onClick={() => recusar(u)} className="btn-icon" title="Recusar acesso"
                             style={{ color: '#ef4444' }}>
                             🚫
+                          </button>
+                        )}
+                        {!u.is_admin && (
+                          <button onClick={() => excluir(u)} className="btn-icon" title="Excluir usuário"
+                            style={{ color: '#ef4444' }}>
+                            🗑️
                           </button>
                         )}
                       </div>
