@@ -11,8 +11,15 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 async function getSignedUrl(filePath, expiresIn) {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token || SUPABASE_KEY
+  let token = SUPABASE_KEY
+  try {
+    const stored = localStorage.getItem('sistema-advocacia-auth')
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      token = parsed?.access_token || SUPABASE_KEY
+    }
+  } catch {}
+
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${filePath}`, {
     method: 'POST',
     headers: {
