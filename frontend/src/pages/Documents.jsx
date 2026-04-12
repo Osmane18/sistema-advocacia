@@ -11,22 +11,24 @@ let whatsappTab = null
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-async function getSignedUrl(filePath, expiresIn) {
-  let token = SUPABASE_KEY
+function getToken() {
   try {
     const stored = localStorage.getItem('sistema-advocacia-auth')
     if (stored) {
       const parsed = JSON.parse(stored)
-      token = parsed?.access_token || SUPABASE_KEY
+      return parsed?.access_token || SUPABASE_KEY
     }
   } catch {}
+  return SUPABASE_KEY
+}
 
+async function getSignedUrl(filePath, expiresIn) {
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${filePath}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${getToken()}`
     },
     body: JSON.stringify({ expiresIn }),
     signal: AbortSignal.timeout(10000)
@@ -92,29 +94,51 @@ export default function Documents() {
     if (!files.length) return
     setUploading(true)
     let successCount = 0
+    const token = getToken()
 
     for (const file of files) {
       try {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
         const filePath = `${user.id}/${Date.now()}_${safeName}`
 
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET)
-          .upload(filePath, file, { contentType: file.type, cacheControl: '3600' })
-
-        if (uploadError) throw uploadError
-
-        const { error: dbError } = await supabase.from('documents').insert({
-          name: file.name,
-          file_path: filePath,
-          file_type: file.type,
-          file_size: file.size,
-          client_id: selectedClient || null,
-          process_id: selectedProcess || null,
-          uploaded_by: user.id
+        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${filePath}`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': file.type || 'application/octet-stream',
+            'Cache-Control': '3600'
+          },
+          body: file
         })
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json()
+          throw new Error(err.error || 'Erro ao enviar arquivo')
+        }
 
-        if (dbError) throw dbError
+        const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/documents`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            name: file.name,
+            file_path: filePath,
+            file_type: file.type,
+            file_size: file.size,
+            client_id: selectedClient || null,
+            process_id: selectedProcess || null,
+            uploaded_by: user.id
+          })
+        })
+        if (!dbRes.ok) {
+          const err = await dbRes.json()
+          throw new Error(err.message || 'Erro ao registrar arquivo')
+        }
+
         successCount++
       } catch (err) {
         showError(`Erro ao enviar "${file.name}": ${err.message}`, 'Erro no Envio')
