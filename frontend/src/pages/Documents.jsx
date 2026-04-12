@@ -7,6 +7,7 @@ import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
 
 const BUCKET = 'documentos'
+let whatsappTab = null
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -158,7 +159,13 @@ export default function Documents() {
       )
 
       if (num && num.length >= 10) {
-        window.open(`https://web.whatsapp.com/send?phone=55${num}&text=${msg}`, 'whatsapp_tab')
+        const url = `https://web.whatsapp.com/send?phone=55${num}&text=${msg}`
+        if (whatsappTab && !whatsappTab.closed) {
+          whatsappTab.location.href = url
+          whatsappTab.focus()
+        } else {
+          whatsappTab = window.open(url, '_blank')
+        }
       } else {
         await navigator.clipboard.writeText(signedUrl)
         toast.success('Link copiado! Cole no WhatsApp do cliente.')
