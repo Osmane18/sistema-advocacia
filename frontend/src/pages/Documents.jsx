@@ -60,31 +60,22 @@ export default function Documents() {
     }
   }
 
-  async function handleUpload(e) {
-    const files = Array.from(e.target.files)
+  async function uploadFiles(files) {
     if (!files.length) return
-
     setUploading(true)
     let successCount = 0
 
     for (const file of files) {
       try {
-        // Gerar nome unico para o arquivo
-        const ext = file.name.split('.').pop()
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
         const filePath = `${user.id}/${Date.now()}_${safeName}`
 
-        // Upload para o Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from(BUCKET)
-          .upload(filePath, file, {
-            contentType: file.type,
-            cacheControl: '3600'
-          })
+          .upload(filePath, file, { contentType: file.type, cacheControl: '3600' })
 
         if (uploadError) throw uploadError
 
-        // Salvar metadados no banco
         const { error: dbError } = await supabase.from('documents').insert({
           name: file.name,
           file_path: filePath,
@@ -106,9 +97,12 @@ export default function Documents() {
       toast.success(`${successCount} arquivo(s) enviado(s)!`)
       loadAll()
     }
-
     setUploading(false)
-    e.target.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function handleUpload(e) {
+    await uploadFiles(Array.from(e.target.files || []))
   }
 
   async function handleDownload(doc) {
@@ -244,11 +238,8 @@ export default function Documents() {
             e.preventDefault()
             e.currentTarget.style.borderColor = '#e5e7eb'
             e.currentTarget.style.background = 'transparent'
-            const dt = e.dataTransfer
-            if (dt.files.length) {
-              const syntheticEvent = { target: { files: dt.files, value: '' } }
-              handleUpload(syntheticEvent)
-            }
+            const files = Array.from(e.dataTransfer.files)
+            if (files.length) uploadFiles(files)
           }}
         >
           <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
