@@ -181,6 +181,18 @@ export default function Clients() {
                     <td>{formatDate(client.created_at)}</td>
                     <td>
                       <div className="table-actions">
+                        {client.phone && (
+                          <a
+                            href={`https://wa.me/55${client.phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-icon"
+                            title="Abrir WhatsApp"
+                            style={{ color: '#22c55e' }}
+                          >
+                            💬
+                          </a>
+                        )}
                         <button
                           className="btn-icon"
                           title="Editar"
