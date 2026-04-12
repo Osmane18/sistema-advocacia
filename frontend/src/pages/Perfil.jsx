@@ -55,19 +55,19 @@ export default function Perfil() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/change_password`, {
-        method: 'POST',
+      const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'apikey': supabaseKey,
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ new_password: senhas.nova }),
+        body: JSON.stringify({ password: senhas.nova }),
         signal: AbortSignal.timeout(10000)
       })
 
       const result = await response.json()
-      if (!response.ok || result?.error) throw new Error(result?.message || result?.error || 'Erro ao alterar senha')
+      if (!response.ok) throw new Error(result?.msg || result?.message || 'Erro ao alterar senha')
 
       toast.success('Senha alterada com sucesso!')
       setSenhas({ nova: '', confirmar: '' })
