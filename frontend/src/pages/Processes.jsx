@@ -56,7 +56,7 @@ export default function Processes() {
         { data: cls },
         { data: lwrs }
       ] = await Promise.all([
-        supabase.from('processes').select('*, clients(name), user_profiles!processes_lawyer_id_fkey(full_name)').order('created_at', { ascending: false }),
+        supabase.from('processes').select('*, clients(name)').order('created_at', { ascending: false }),
         supabase.from('clients').select('id, name').order('name'),
         supabase.from('user_profiles').select('id, full_name').order('full_name')
       ])
