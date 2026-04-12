@@ -49,12 +49,34 @@ export default function Perfil() {
     if (senhas.nova !== senhas.confirmar) { toast.error('Senhas não conferem'); return }
     setSalvandoSenha(true)
     try {
-      const { error } = await supabase.rpc('change_password', { new_password: senhas.nova })
-      if (error) throw error
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sessão expirada. Faça login novamente.')
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/change_password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ new_password: senhas.nova }),
+        signal: AbortSignal.timeout(10000)
+      })
+
+      const result = await response.json()
+      if (!response.ok || result?.error) throw new Error(result?.message || result?.error || 'Erro ao alterar senha')
+
       toast.success('Senha alterada com sucesso!')
       setSenhas({ nova: '', confirmar: '' })
     } catch (err) {
-      toast.error(err.message || 'Erro ao alterar senha')
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        toast.error('Tempo esgotado. Tente novamente.')
+      } else {
+        toast.error(err.message || 'Erro ao alterar senha')
+      }
     } finally {
       setSalvandoSenha(false)
     }
