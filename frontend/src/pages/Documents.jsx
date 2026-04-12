@@ -71,8 +71,8 @@ export default function Documents() {
 
   useEffect(() => { loadAll() }, [])
 
-  async function loadAll() {
-    setLoading(true)
+  async function loadAll(showLoading = true) {
+    if (showLoading) setLoading(true)
     try {
       const [{ data: docs }, { data: cls }, { data: procs }] = await Promise.all([
         supabase.from('documents').select('*, clients(name, phone), processes(number)')
@@ -147,7 +147,7 @@ export default function Documents() {
 
     if (successCount > 0) {
       toast.success(`${successCount} arquivo(s) enviado(s)!`)
-      loadAll()
+      loadAll(false)
     }
     setUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
