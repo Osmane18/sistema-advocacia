@@ -8,6 +8,7 @@ import Processes from './pages/Processes'
 import Agenda from './pages/Agenda'
 import Financial from './pages/Financial'
 import Documents from './pages/Documents'
+import Perfil from './pages/Perfil'
 
 // Componente de rota privada
 function PrivateRoute({ children }) {
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="agenda" element={<Agenda />} />
         <Route path="financeiro" element={<Financial />} />
         <Route path="documentos" element={<Documents />} />
+        <Route path="perfil" element={<Perfil />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

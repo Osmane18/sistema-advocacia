@@ -9,6 +9,7 @@ const navItems = [
   { to: '/agenda', label: 'Agenda', icon: '📅' },
   { to: '/financeiro', label: 'Financeiro', icon: '💰' },
   { to: '/documentos', label: 'Documentos', icon: '📄' },
+  { to: '/perfil', label: 'Meu Perfil', icon: '👤' },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
