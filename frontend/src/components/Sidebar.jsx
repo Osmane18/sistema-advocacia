@@ -13,8 +13,9 @@ const navItems = [
 ]
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, diasRestantes } = useAuth()
   const navigate = useNavigate()
+  const dias = diasRestantes()
 
   async function handleSignOut() {
     try {
@@ -117,6 +118,30 @@ export default function Sidebar({ isOpen, onClose }) {
               <span>{item.label}</span>
             </NavLink>
           ))}
+
+          {/* Link admin */}
+          {profile?.is_admin && (
+            <NavLink to="/admin" onClick={onClose}
+              style={({ isActive }) => ({
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 12px', borderRadius: 8, marginBottom: 4,
+                textDecoration: 'none',
+                color: isActive ? '#C9A84C' : 'rgba(255,255,255,0.7)',
+                background: isActive ? 'rgba(201,168,76,0.12)' : 'transparent',
+                fontWeight: isActive ? 600 : 400, fontSize: 14,
+                borderLeft: isActive ? '3px solid #C9A84C' : '3px solid transparent'
+              })}>
+              <span style={{ fontSize: 18 }}>👑</span>
+              <span>Painel Admin</span>
+            </NavLink>
+          )}
+
+          {/* Dias restantes */}
+          {!profile?.is_admin && dias !== null && dias <= 7 && (
+            <div style={{ margin: '8px 4px', padding: '8px 12px', background: dias <= 3 ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', borderRadius: 8, fontSize: 12, color: dias <= 3 ? '#fca5a5' : '#fcd34d', fontWeight: 600 }}>
+              ⏰ {dias > 0 ? `${dias} dia(s) restante(s)` : 'Acesso expirado'}
+            </div>
+          )}
         </nav>
 
         {/* Footer com usuario */}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -121,18 +121,9 @@ export default function Login() {
           </button>
         </form>
 
-        <div style={{
-          marginTop: 24,
-          padding: 16,
-          background: '#f9fafb',
-          borderRadius: 8,
-          border: '1px solid #e5e7eb',
-          fontSize: 13,
-          color: '#6b7280',
-          textAlign: 'center'
-        }}>
-          Acesso via Supabase Authentication.<br />
-          Crie usuarios no painel do Supabase.
+        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#6b7280' }}>
+          Não tem conta?{' '}
+          <Link to="/cadastro" style={{ color: '#C9A84C', fontWeight: 600 }}>Criar conta grátis</Link>
         </div>
       </div>
     </div>
