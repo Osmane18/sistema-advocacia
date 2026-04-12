@@ -96,7 +96,7 @@ export default function Processes() {
     setUpdateForm(emptyUpdate)
     const { data } = await supabase
       .from('process_updates')
-      .select('*, user_profiles(full_name)')
+      .select('*')
       .eq('process_id', proc.id)
       .order('date', { ascending: false })
     setUpdates(data || [])
@@ -171,7 +171,7 @@ export default function Processes() {
       setUpdateForm(emptyUpdate)
       const { data } = await supabase
         .from('process_updates')
-        .select('*, user_profiles(full_name)')
+        .select('*')
         .eq('process_id', selected.id)
         .order('date', { ascending: false })
       setUpdates(data || [])
