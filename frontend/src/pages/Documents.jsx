@@ -158,13 +158,7 @@ export default function Documents() {
       )
 
       if (num && num.length >= 10) {
-        const a = document.createElement('a')
-        a.href = `https://web.whatsapp.com/send?phone=55${num}&text=${msg}`
-        a.target = '_blank'
-        a.rel = 'noopener noreferrer'
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
+        window.open(`https://web.whatsapp.com/send?phone=55${num}&text=${msg}`, 'whatsapp_tab')
       } else {
         await navigator.clipboard.writeText(signedUrl)
         toast.success('Link copiado! Cole no WhatsApp do cliente.')
