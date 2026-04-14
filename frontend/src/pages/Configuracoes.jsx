@@ -25,6 +25,8 @@ export default function Configuracoes() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [officeId, setOfficeId] = useState(null)
+  const [fazendoBackup, setFazendoBackup] = useState(false)
+  const [ultimoBackup, setUltimoBackup] = useState(() => localStorage.getItem('ultimo_backup') || null)
 
   useEffect(() => { loadOffice() }, [])
 
@@ -48,6 +50,59 @@ export default function Configuracoes() {
       toast.error('Erro ao carregar dados do escritório')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fazerBackup() {
+    setFazendoBackup(true)
+    try {
+      const [
+        { data: clientes },
+        { data: processos },
+        { data: tarefas },
+        { data: financeiro },
+        { data: eventos },
+        { data: documentos },
+      ] = await Promise.all([
+        supabase.from('clients').select('*').order('name'),
+        supabase.from('processes').select('*, clients(name)').order('created_at', { ascending: false }),
+        supabase.from('tasks').select('*, clients(name)').order('created_at', { ascending: false }),
+        supabase.from('financial_records').select('*, clients(name)').order('created_at', { ascending: false }),
+        supabase.from('events').select('*, clients(name)').order('date', { ascending: false }),
+        supabase.from('documents').select('*').order('created_at', { ascending: false }),
+      ])
+
+      const backup = {
+        sistema: 'JurisFlow — Gestão Jurídica Inteligente',
+        data_backup: new Date().toLocaleString('pt-BR'),
+        totais: {
+          clientes: clientes?.length || 0,
+          processos: processos?.length || 0,
+          tarefas: tarefas?.length || 0,
+          financeiro: financeiro?.length || 0,
+          eventos: eventos?.length || 0,
+          documentos: documentos?.length || 0,
+        },
+        dados: { clientes, processos, tarefas, financeiro, eventos, documentos },
+      }
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const dataHoje = new Date().toISOString().slice(0, 10)
+      a.href = url
+      a.download = `jurisflow-backup-${dataHoje}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      const agora = new Date().toLocaleString('pt-BR')
+      setUltimoBackup(agora)
+      localStorage.setItem('ultimo_backup', agora)
+      toast.success('Backup realizado com sucesso!')
+    } catch (err) {
+      toast.error('Erro ao fazer backup: ' + err.message)
+    } finally {
+      setFazendoBackup(false)
     }
   }
 
@@ -156,6 +211,56 @@ export default function Configuracoes() {
             </div>
           </form>
         )}
+      </div>
+
+      {/* Backup */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: '#1A1A2E' }}>🔒 Backup dos Dados</h3>
+        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+          Exporta todos os seus dados (clientes, processos, tarefas, financeiro, agenda) em um arquivo que você salva no computador.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '14px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 20 }}>📦</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>O que é salvo no backup?</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Clientes · Processos · Tarefas · Financeiro · Agenda · Documentos</div>
+            </div>
+          </div>
+
+          {ultimoBackup && (
+            <div style={{ padding: '10px 14px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 12, color: '#6b7280' }}>
+              ✅ Último backup: <strong style={{ color: '#374151' }}>{ultimoBackup}</strong>
+            </div>
+          )}
+
+          <button
+            onClick={fazerBackup}
+            disabled={fazendoBackup}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              background: fazendoBackup ? '#e5e7eb' : '#1B2B4B',
+              color: fazendoBackup ? '#9ca3af' : '#fff',
+              border: 'none', borderRadius: 10, padding: '13px 24px',
+              fontSize: 14, fontWeight: 700, cursor: fazendoBackup ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {fazendoBackup ? (
+              <>
+                <div style={{ width: 16, height: 16, border: '2px solid #9ca3af', borderTop: '2px solid #374151', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                Gerando backup...
+              </>
+            ) : (
+              <>⬇️ Fazer Backup Agora</>
+            )}
+          </button>
+
+          <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center' }}>
+            O arquivo será salvo na pasta de Downloads do seu computador
+          </p>
+        </div>
       </div>
 
       {/* Preview do recibo */}
