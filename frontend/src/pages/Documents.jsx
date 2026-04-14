@@ -5,6 +5,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
 import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const BUCKET = 'documentos'
 let whatsappTab = null
@@ -55,6 +56,7 @@ function getFileIcon(type) {
 }
 
 export default function Documents() {
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const showError = useError()
   const [documents, setDocuments] = useState([])
@@ -67,12 +69,14 @@ export default function Documents() {
   const [selectedClient, setSelectedClient] = useState('')
   const [selectedProcess, setSelectedProcess] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [loadError, setLoadError] = useState(null)
   const fileInputRef = useRef(null)
 
   useEffect(() => { loadAll() }, [])
 
   async function loadAll(showLoading = true) {
     if (showLoading) setLoading(true)
+    setLoadError(null)
     try {
       const [{ data: docs }, { data: cls }, { data: procs }] = await Promise.all([
         supabase.from('documents').select('*, clients(name, phone), processes(number)')
@@ -84,6 +88,7 @@ export default function Documents() {
       setClients(cls || [])
       setProcesses(procs || [])
     } catch (err) {
+      setLoadError(err.message)
       showError('Erro ao carregar documentos: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
@@ -246,7 +251,7 @@ export default function Documents() {
       {/* Upload area */}
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>Enviar Documentos</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Cliente (opcional)</label>
             <select className="form-select" value={selectedClient} onChange={e => setSelectedClient(e.target.value)}>
@@ -369,6 +374,17 @@ export default function Documents() {
                 Array(5).fill(0).map((_, i) => (
                   <tr key={i}>{Array(8).fill(0).map((_, j) => <td key={j}><div className="skeleton" style={{ height: 18 }} /></td>)}</tr>
                 ))
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">⚠️</div>
+                      <div className="empty-state-text">Erro ao carregar dados</div>
+                      <div className="empty-state-sub">{loadError}</div>
+                      <button className="btn-primary" onClick={() => loadAll()} style={{ marginTop: 12 }}>Tentar novamente</button>
+                    </div>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8}>

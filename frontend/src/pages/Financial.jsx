@@ -7,6 +7,120 @@ import toast from 'react-hot-toast'
 import { useError } from '../context/ErrorContext'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 
+function gerarPDFNF(rec, office, advogado) {
+  const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+  const fmtDate = (d) => {
+    if (!d) return '-'
+    try { const [y, m, day] = d.split('T')[0].split('-'); return `${day}/${m}/${y}` } catch { return d }
+  }
+  const numero = Math.floor(Math.random() * 900000 + 100000)
+  const hoje = format(new Date(), 'dd/MM/yyyy')
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Recibo de Honorários - ${rec.clients?.name || 'Cliente'}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #fff; padding: 40px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1B2B4B; padding-bottom: 20px; margin-bottom: 24px; }
+    .office-name { font-size: 20px; font-weight: 700; color: #1B2B4B; }
+    .office-info { font-size: 11px; color: #555; margin-top: 4px; line-height: 1.6; }
+    .doc-title { text-align: right; }
+    .doc-title h2 { font-size: 16px; font-weight: 700; color: #1B2B4B; text-transform: uppercase; }
+    .doc-title p { font-size: 11px; color: #777; margin-top: 4px; }
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 700; color: #1B2B4B; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 2px; }
+    .field span { font-size: 13px; color: #1a1a1a; font-weight: 500; }
+    .value-box { background: #f0f4ff; border: 2px solid #1B2B4B; border-radius: 8px; padding: 16px 20px; text-align: center; margin: 20px 0; }
+    .value-box .label { font-size: 11px; color: #555; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+    .value-box .amount { font-size: 28px; font-weight: 700; color: #1B2B4B; }
+    .description-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px; font-size: 13px; line-height: 1.6; color: #374151; }
+    .notice { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 14px; margin-top: 24px; font-size: 12px; color: #92400e; line-height: 1.6; }
+    .notice strong { display: block; margin-bottom: 4px; }
+    .footer { border-top: 1px solid #e5e7eb; margin-top: 32px; padding-top: 16px; display: flex; justify-content: space-between; font-size: 11px; color: #9ca3af; }
+    .signature { margin-top: 48px; display: flex; justify-content: center; }
+    .signature-line { text-align: center; }
+    .signature-line .line { border-top: 1px solid #1a1a1a; width: 260px; margin-bottom: 6px; }
+    .signature-line p { font-size: 12px; color: #374151; }
+    @media print { body { padding: 20px; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="office-name">${office?.name || advogado || 'Escritório de Advocacia'}</div>
+      <div class="office-info">
+        ${office?.cnpj ? `CNPJ: ${office.cnpj}<br>` : '<span style="color:#e67e22">⚠ CNPJ não cadastrado — preencha nas configurações</span><br>'}
+        ${office?.address ? office.address + '<br>' : ''}
+        ${office?.phone ? 'Tel: ' + office.phone + '<br>' : ''}
+        ${office?.email ? office.email : ''}
+      </div>
+    </div>
+    <div class="doc-title">
+      <h2>Recibo de Honorários</h2>
+      <p>Nº ${numero}</p>
+      <p>Data de emissão: ${hoje}</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Dados do Cliente / Tomador</div>
+    <div class="grid">
+      <div class="field"><label>Nome / Razão Social</label><span>${rec.clients?.name || 'Não informado'}</span></div>
+      <div class="field"><label>Processo vinculado</label><span>${rec.processes?.number || '-'}</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Descrição do Serviço</div>
+    <div class="description-box">${rec.description || 'Prestação de serviços advocatícios'}</div>
+  </div>
+
+  <div class="value-box">
+    <div class="label">Valor dos Honorários</div>
+    <div class="amount">${fmt(rec.amount)}</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Datas</div>
+    <div class="grid">
+      <div class="field"><label>Vencimento</label><span>${fmtDate(rec.due_date)}</span></div>
+      <div class="field"><label>Data do Pagamento</label><span>${fmtDate(rec.paid_date)}</span></div>
+    </div>
+  </div>
+
+  <div class="signature">
+    <div class="signature-line">
+      <div class="line"></div>
+      <p><strong>${advogado || office?.name || 'Advogado(a)'}</strong></p>
+      <p>Advogado(a) Responsável</p>
+    </div>
+  </div>
+
+  <div class="notice">
+    <strong>⚠ Atenção — Para fins fiscais:</strong>
+    Use os dados acima para emitir a Nota Fiscal de Serviços (NFS-e) no portal da sua prefeitura.
+    Este recibo não substitui a Nota Fiscal eletrônica obrigatória.
+  </div>
+
+  <div class="footer">
+    <span>Documento gerado em ${hoje}</span>
+    <span>Sistema de Gestão Advocacia</span>
+  </div>
+
+  <script>window.onload = () => window.print()</script>
+</body>
+</html>`
+
+  const w = window.open('', '_blank', 'width=900,height=700')
+  w.document.write(html)
+  w.document.close()
+}
+
 const statusBadge = {
   pago:     'badge-success',
   pendente: 'badge-warning',
@@ -44,11 +158,12 @@ function SummaryCard({ label, value, icon, color, loading }) {
 }
 
 export default function Financial() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const showError = useError()
   const [records, setRecords] = useState([])
   const [clients, setClients] = useState([])
   const [processes, setProcesses] = useState([])
+  const [office, setOffice] = useState(null)
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -58,18 +173,22 @@ export default function Financial() {
   const [saving, setSaving] = useState(false)
   const [stats, setStats] = useState({ total: 0, monthIn: 0, monthOut: 0, pending: 0 })
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
     setLoading(true)
+    setLoadError(null)
     try {
-      const [{ data: recs }, { data: cls }, { data: procs }] = await Promise.all([
+      const [{ data: recs }, { data: cls }, { data: procs }, { data: officeData }] = await Promise.all([
         supabase.from('financial_records').select('*, clients(name), processes(number)')
           .order('created_at', { ascending: false }),
         supabase.from('clients').select('id, name').order('name'),
-        supabase.from('processes').select('id, number').order('number')
+        supabase.from('processes').select('id, number').order('number'),
+        supabase.from('offices').select('*').single()
       ])
+      setOffice(officeData || null)
       setRecords(recs || [])
       setClients(cls || [])
       setProcesses(procs || [])
@@ -84,6 +203,7 @@ export default function Financial() {
       const pending = (recs || []).filter(r => r.status === 'pendente' || r.status === 'atrasado').reduce((s, r) => s + (r.amount || 0), 0)
       setStats({ total: totalReceita, monthIn, monthOut, pending })
     } catch (err) {
+      setLoadError(err.message)
       showError('Erro ao carregar financeiro: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
@@ -228,6 +348,17 @@ export default function Financial() {
                 Array(5).fill(0).map((_, i) => (
                   <tr key={i}>{Array(8).fill(0).map((_, j) => <td key={j}><div className="skeleton" style={{ height: 18 }} /></td>)}</tr>
                 ))
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">⚠️</div>
+                      <div className="empty-state-text">Erro ao carregar dados</div>
+                      <div className="empty-state-sub">{loadError}</div>
+                      <button className="btn-primary" onClick={loadAll} style={{ marginTop: 12 }}>Tentar novamente</button>
+                    </div>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8}>
@@ -259,6 +390,16 @@ export default function Financial() {
                     <td><span className={`badge ${statusBadge[rec.status] || 'badge-gray'}`}>{rec.status}</span></td>
                     <td>
                       <div className="table-actions">
+                        {rec.type !== 'despesa' && (
+                          <button
+                            className="btn-icon"
+                            onClick={() => gerarPDFNF(rec, office, profile?.full_name)}
+                            title="Gerar recibo / dados para NF"
+                            style={{ color: '#7c3aed' }}
+                          >
+                            📄
+                          </button>
+                        )}
                         <button className="btn-icon" onClick={() => openEdit(rec)} title="Editar" style={{ color: '#1B2B4B' }}>✏️</button>
                         <button className="btn-icon" onClick={() => handleDelete(rec.id)} title="Excluir" style={{ color: '#ef4444' }}>🗑️</button>
                       </div>

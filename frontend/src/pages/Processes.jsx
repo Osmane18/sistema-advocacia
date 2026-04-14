@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import toast from 'react-hot-toast'
 import { useError } from '../context/ErrorContext'
 import { format } from 'date-fns'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 const AREAS = ['Trabalhista', 'Civil', 'Criminal', 'Família', 'Tributário', 'Empresarial', 'Previdenciário', 'Outros']
 
@@ -23,6 +24,7 @@ const emptyForm = {
 const emptyUpdate = { description: '', date: format(new Date(), 'yyyy-MM-dd') }
 
 export default function Processes() {
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const showError = useError()
   const [processes, setProcesses] = useState([])
@@ -43,6 +45,7 @@ export default function Processes() {
   const [savingUpdate, setSavingUpdate] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmDeleteUpdate, setConfirmDeleteUpdate] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     loadAll()
@@ -50,6 +53,7 @@ export default function Processes() {
 
   async function loadAll() {
     setLoading(true)
+    setLoadError(null)
     try {
       const [
         { data: procs },
@@ -64,6 +68,7 @@ export default function Processes() {
       setClients(cls || [])
       setLawyers(lwrs || [])
     } catch (err) {
+      setLoadError(err.message)
       showError('Erro ao carregar processos: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
@@ -263,6 +268,17 @@ export default function Processes() {
                 Array(5).fill(0).map((_, i) => (
                   <tr key={i}>{Array(7).fill(0).map((_, j) => <td key={j}><div className="skeleton" style={{ height: 18 }} /></td>)}</tr>
                 ))
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">⚠️</div>
+                      <div className="empty-state-text">Erro ao carregar dados</div>
+                      <div className="empty-state-sub">{loadError}</div>
+                      <button className="btn-primary" onClick={loadAll} style={{ marginTop: 12 }}>Tentar novamente</button>
+                    </div>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
@@ -391,7 +407,7 @@ export default function Processes() {
           <div>
             {/* Info do processo */}
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+              display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 12,
               padding: 16, background: '#f9fafb', borderRadius: 8, marginBottom: 24,
               border: '1px solid #e5e7eb'
             }}>

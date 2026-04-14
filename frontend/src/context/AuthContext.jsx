@@ -24,17 +24,14 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 5000)
+    // Timeout de segurança: nunca fica travado mais de 8 segundos
+    const timeout = setTimeout(() => setLoading(false), 8000)
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout)
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      setLoading(false)
-    }).catch(() => { clearTimeout(timeout); setLoading(false) })
-
+    // onAuthStateChange dispara INITIAL_SESSION imediatamente no Supabase v2
+    // e trata todos os eventos subsequentes (login, logout, refresh de token)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        clearTimeout(timeout)
         setUser(session?.user ?? null)
         if (session?.user) await fetchProfile(session.user.id)
         else setProfile(null)
@@ -42,7 +39,10 @@ export function AuthProvider({ children }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function signIn(email, password) {

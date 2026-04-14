@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
+import { useIsMobile } from '../hooks/useIsMobile'
 import toast from 'react-hot-toast'
 import { useError } from '../context/ErrorContext'
 import {
@@ -26,6 +27,7 @@ const emptyForm = {
 }
 
 export default function Agenda() {
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const showError = useError()
   const [events, setEvents] = useState([])
@@ -39,6 +41,7 @@ export default function Agenda() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     loadAll()
@@ -46,6 +49,7 @@ export default function Agenda() {
 
   async function loadAll() {
     setLoading(true)
+    setLoadError(null)
     try {
       const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
       const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd')
@@ -61,6 +65,7 @@ export default function Agenda() {
       setClients(cls || [])
       setProcesses(procs || [])
     } catch (err) {
+      setLoadError(err.message)
       showError('Erro ao carregar agenda: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
@@ -200,7 +205,7 @@ export default function Agenda() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: 20 }}>
         {/* Calendario */}
         <div className="card">
           {/* Navegacao do mes */}
@@ -303,6 +308,12 @@ export default function Agenda() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
             {loading ? (
               Array(4).fill(0).map((_, i) => <div key={i} className="skeleton" style={{ height: 60, marginBottom: 8 }} />)
+            ) : loadError ? (
+              <div className="empty-state" style={{ padding: 32 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
+                <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>Erro ao carregar agenda</div>
+                <button className="btn-primary" onClick={loadAll} style={{ fontSize: 13 }}>Tentar novamente</button>
+              </div>
             ) : displayEvents.length === 0 ? (
               <div className="empty-state" style={{ padding: 32 }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>

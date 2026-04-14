@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useError } from '../context/ErrorContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { format, addDays, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -55,6 +56,7 @@ const AREA_COLORS = {
 }
 
 export default function Dashboard() {
+  const isMobile = useIsMobile()
   const showError = useError()
   const [stats, setStats] = useState({
     clients: 0, processes: 0, events: 0, revenue: 0,
@@ -66,11 +68,13 @@ export default function Dashboard() {
   const [revenueChart, setRevenueChart] = useState([])
   const [areasChart, setAreasChart] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => { loadDashboard() }, [])
 
   async function loadDashboard() {
     setLoading(true)
+    setLoadError(null)
     try {
       const today = new Date()
       const todayStr = format(today, 'yyyy-MM-dd')
@@ -164,6 +168,7 @@ export default function Dashboard() {
       setAreasChart(Object.entries(areaCount).sort((a, b) => b[1] - a[1]))
 
     } catch (err) {
+      setLoadError(err.message)
       showError('Erro ao carregar o painel: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
@@ -181,6 +186,17 @@ export default function Dashboard() {
 
   const maxRevenue = Math.max(...revenueChart.map(m => m.value), 1)
   const maxArea = Math.max(...areasChart.map(a => a[1]), 1)
+
+  if (loadError && !loading) {
+    return (
+      <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 16 }}>
+        <div style={{ fontSize: 48 }}>⚠️</div>
+        <div style={{ fontWeight: 600, color: '#1B2B4B', fontSize: 16 }}>Erro ao carregar o painel</div>
+        <div style={{ color: '#6b7280', fontSize: 13 }}>{loadError}</div>
+        <button className="btn-primary" onClick={loadDashboard}>Tentar novamente</button>
+      </div>
+    )
+  }
 
   return (
     <div className="fade-in">
@@ -205,7 +221,7 @@ export default function Dashboard() {
       </div>
 
       {/* Gráficos */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
 
         {/* Receita mensal */}
         <div className="card">
@@ -271,7 +287,7 @@ export default function Dashboard() {
       </div>
 
       {/* Eventos e Processos */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
         {/* Próximos eventos */}
         <div className="card">
           <div className="card-header">

@@ -1,4 +1,5 @@
 {
+  "alias": ["sistema-advocacia-eosin.vercel.app"],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],

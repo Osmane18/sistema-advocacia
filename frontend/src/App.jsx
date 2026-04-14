@@ -11,6 +11,8 @@ import Financial from './pages/Financial'
 import Documents from './pages/Documents'
 import Perfil from './pages/Perfil'
 import Admin from './pages/Admin'
+import Configuracoes from './pages/Configuracoes'
+import Tasks from './pages/Tasks'
 
 function Carregando() {
   return (
@@ -90,6 +92,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="clientes" element={<Clients />} />
         <Route path="processos" element={<Processes />} />
+        <Route path="tarefas" element={<Tasks />} />
         <Route path="agenda" element={<Agenda />} />
         <Route path="financeiro" element={<Financial />} />
         <Route path="documentos" element={<Documents />} />
@@ -99,6 +102,7 @@ export default function App() {
             <Admin />
           </PrivateRoute>
         } />
+        <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -21,12 +21,14 @@ export default function Clients() {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(null) // cliente a excluir
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => { loadClients() }, [])
 
   async function loadClients() {
     setLoading(true)
+    setLoadError(null)
     try {
       const { data, error } = await supabase
         .from('clients')
@@ -35,6 +37,7 @@ export default function Clients() {
       if (error) throw error
       setClients(data || [])
     } catch (err) {
+      setLoadError(err.message)
       showError('Erro ao carregar clientes: ' + err.message, 'Erro ao Carregar')
     } finally {
       setLoading(false)
@@ -159,6 +162,19 @@ export default function Clients() {
                     ))}
                   </tr>
                 ))
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">⚠️</div>
+                      <div className="empty-state-text">Erro ao carregar dados</div>
+                      <div className="empty-state-sub">{loadError}</div>
+                      <button className="btn-primary" onClick={loadClients} style={{ marginTop: 12 }}>
+                        Tentar novamente
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6}>
