@@ -215,9 +215,10 @@ export default function Dashboard() {
               {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 44 }} />)}
             </div>
           ) : tarefasHoje.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🎉</div>
-              <div className="empty-state-text">Nenhuma tarefa urgente hoje!</div>
+            <div style={{ padding: '20px 0', textAlign: 'center', color: '#6b7280' }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>✓</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>Sem tarefas urgentes no momento</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Todas as tarefas estão em dia</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
