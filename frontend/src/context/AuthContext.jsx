@@ -23,17 +23,22 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // Quando a aba volta ao foco, verifica a sessão silenciosamente (sem spinner)
+  // Quando a aba volta ao foco, renova o token silenciosamente (sem spinner)
   useEffect(() => {
+    let lastVisible = Date.now()
+
     async function handleVisibility() {
       if (document.visibilityState === 'visible') {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          setUser(session.user)
-        } else {
-          setUser(null)
-          setProfile(null)
+        const ausente = Date.now() - lastVisible
+        // Só renova se ficou mais de 5 minutos fora
+        if (ausente > 5 * 60 * 1000) {
+          try {
+            const { data: { session } } = await supabase.auth.refreshSession()
+            if (session?.user) setUser(session.user)
+          } catch { /* token ainda válido, ignora */ }
         }
+      } else {
+        lastVisible = Date.now()
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
