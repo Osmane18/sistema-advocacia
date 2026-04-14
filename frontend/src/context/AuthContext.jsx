@@ -23,6 +23,23 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Quando a aba volta ao foco, verifica a sessão silenciosamente (sem spinner)
+  useEffect(() => {
+    async function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+        } else {
+          setUser(null)
+          setProfile(null)
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
   useEffect(() => {
     // Timeout de segurança: nunca fica travado mais de 8 segundos
     const timeout = setTimeout(() => setLoading(false), 8000)
