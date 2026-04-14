@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { format } from 'date-fns'
 
 const pageTitles = {
   '/': 'Painel',
@@ -129,6 +130,9 @@ export default function Header({ onMenuToggle, isMobile }) {
   const title = pageTitles[location.pathname] || 'JurisFlow'
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true')
   const [ajudaOpen, setAjudaOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [notificacoes, setNotificacoes] = useState([])
+  const notifRef = useRef(null)
 
   const [busca, setBusca] = useState('')
   const [resultados, setResultados] = useState([])
@@ -142,6 +146,36 @@ export default function Header({ onMenuToggle, isMobile }) {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     localStorage.setItem('darkMode', darkMode)
   }, [darkMode])
+
+  useEffect(() => { fetchNotificacoes() }, [])
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  async function fetchNotificacoes() {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      const [
+        { count: prazosVencidos },
+        { count: tarefasUrgentes },
+        { data: honorariosAtrasados },
+      ] = await Promise.all([
+        supabase.from('events').select('*', { count: 'exact', head: true }).eq('type', 'prazo').lt('date', today).eq('completed', false),
+        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('priority', 'urgente').neq('status', 'concluida'),
+        supabase.from('financial_records').select('id').eq('status', 'atrasado'),
+      ])
+      const notifs = []
+      if ((prazosVencidos || 0) > 0) notifs.push({ id: 'prazos', icon: '⏰', text: `${prazosVencidos} prazo(s) vencido(s)`, cor: '#dc2626', to: '/agenda' })
+      if ((tarefasUrgentes || 0) > 0) notifs.push({ id: 'tarefas', icon: '🚨', text: `${tarefasUrgentes} tarefa(s) urgente(s)`, cor: '#ea580c', to: '/tarefas' })
+      if ((honorariosAtrasados?.length || 0) > 0) notifs.push({ id: 'financeiro', icon: '💸', text: `${honorariosAtrasados.length} honorário(s) em atraso`, cor: '#b45309', to: '/financeiro' })
+      setNotificacoes(notifs)
+    } catch { /* silently fail */ }
+  }
 
   useEffect(() => {
     function handleClick(e) {
@@ -255,6 +289,65 @@ export default function Header({ onMenuToggle, isMobile }) {
 
         {/* Direita */}
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 8, flexShrink: 0 }}>
+
+          {/* Notificações */}
+          <div ref={notifRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setNotifOpen(v => !v)}
+              title="Notificações"
+              style={{
+                position: 'relative', background: notifOpen ? '#f3f4f6' : 'none',
+                border: '1px solid #e5e7eb', cursor: 'pointer', borderRadius: 8,
+                width: isMobile ? 44 : 38, height: isMobile ? 44 : 38,
+                fontSize: isMobile ? 20 : 17,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              🔔
+              {notificacoes.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: -5, right: -5,
+                  background: '#dc2626', color: '#fff',
+                  fontSize: 10, fontWeight: 800,
+                  minWidth: 18, height: 18, borderRadius: 9,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '2px solid #fff', padding: '0 3px',
+                }}>
+                  {notificacoes.length}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                width: 300, background: '#fff',
+                borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                border: '1px solid #e5e7eb', zIndex: 999, overflow: 'hidden',
+              }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#1B2B4B' }}>🔔 Notificações</span>
+                  <button onClick={fetchNotificacoes} style={{ background: 'none', border: 'none', fontSize: 12, color: '#9ca3af', cursor: 'pointer', padding: '2px 6px' }}>↻ Atualizar</button>
+                </div>
+                {notificacoes.length === 0 ? (
+                  <div style={{ padding: '20px 16px', textAlign: 'center', color: '#15803d', fontSize: 14, fontWeight: 600 }}>✅ Tudo em dia!</div>
+                ) : (
+                  notificacoes.map(n => (
+                    <button key={n.id}
+                      onClick={() => { navigate(n.to); setNotifOpen(false) }}
+                      style={{ width: '100%', textAlign: 'left', padding: '12px 16px', background: 'none', border: 'none', borderBottom: '1px solid #f9fafb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: 20, flexShrink: 0 }}>{n.icon}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: n.cor, flex: 1 }}>{n.text}</span>
+                      <span style={{ fontSize: 13, color: '#9ca3af' }}>→</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Botão Ajuda */}
           <button onClick={() => setAjudaOpen(true)} title="Ajuda e suporte"
