@@ -125,6 +125,12 @@ export default function Login() {
           Não tem conta?{' '}
           <Link to="/cadastro" style={{ color: '#C9A84C', fontWeight: 600 }}>Criar conta grátis</Link>
         </div>
+
+        {/* Mensagem de segurança */}
+        <div style={{ marginTop: 24, padding: '10px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <span style={{ fontSize: 15 }}>🔒</span>
+          <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>Seus dados estão protegidos e seguros</span>
+        </div>
       </div>
     </div>
   )
