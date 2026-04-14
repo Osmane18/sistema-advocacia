@@ -2,24 +2,19 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useError } from '../context/ErrorContext'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { format, addDays, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { format, addDays, startOfMonth, endOfMonth, subMonths, isToday, isPast, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import toast from 'react-hot-toast'
 
 function StatCard({ icon, label, value, color, loading }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 20px' }}>
-      <div style={{
-        width: 44, height: 44, borderRadius: 10,
-        background: color + '18',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20
-      }}>
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
         {icon}
       </div>
       <div>
         <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>{label}</div>
-        {loading ? (
-          <div className="skeleton" style={{ width: 70, height: 24 }} />
-        ) : (
+        {loading ? <div className="skeleton" style={{ width: 70, height: 24 }} /> : (
           <div style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1.2 }}>{value}</div>
         )}
       </div>
@@ -29,44 +24,33 @@ function StatCard({ icon, label, value, color, loading }) {
 
 function AlertCard({ icon, text, color, bg }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 16px', borderRadius: 10,
-      background: bg, border: `1.5px solid ${color}30`,
-      fontSize: 14, fontWeight: 600, color
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, background: bg, border: `1.5px solid ${color}30`, fontSize: 14, fontWeight: 600, color }}>
       <span style={{ fontSize: 20 }}>{icon}</span>
       {text}
     </div>
   )
 }
 
-const eventTypeColors = {
-  audiencia: '#3b82f6', prazo: '#ef4444', reuniao: '#22c55e', compromisso: '#f59e0b'
-}
-const eventTypeLabels = {
-  audiencia: 'Audiência', prazo: 'Prazo', reuniao: 'Reunião', compromisso: 'Compromisso'
-}
+const eventTypeColors = { audiencia: '#3b82f6', prazo: '#ef4444', reuniao: '#22c55e', compromisso: '#f59e0b' }
+const eventTypeLabels = { audiencia: 'Audiência', prazo: 'Prazo', reuniao: 'Reunião', compromisso: 'Compromisso' }
 const statusColors = { ativo: 'badge-success', encerrado: 'badge-gray', suspenso: 'badge-warning' }
-
 const AREA_COLORS = {
   'Trabalhista': '#3b82f6', 'Civil': '#8b5cf6', 'Criminal': '#ef4444',
   'Família': '#ec4899', 'Tributário': '#f59e0b', 'Empresarial': '#14b8a6',
   'Previdenciário': '#22c55e', 'Outros': '#6b7280'
 }
+const PRIORIDADE_COR = { urgente: '#dc2626', alta: '#ea580c', normal: '#2563eb', baixa: '#6b7280' }
 
 export default function Dashboard() {
   const isMobile = useIsMobile()
   const showError = useError()
-  const [stats, setStats] = useState({
-    clients: 0, processes: 0, events: 0, revenue: 0,
-    processesEncerrados: 0, prazoVencido: 0, pendente: 0, documentos: 0
-  })
+  const [stats, setStats] = useState({ clients: 0, processes: 0, events: 0, revenue: 0, processesEncerrados: 0, prazoVencido: 0, pendente: 0, documentos: 0 })
   const [upcomingEvents, setUpcomingEvents] = useState([])
   const [recentProcesses, setRecentProcesses] = useState([])
   const [alerts, setAlerts] = useState([])
   const [revenueChart, setRevenueChart] = useState([])
   const [areasChart, setAreasChart] = useState([])
+  const [tarefasHoje, setTarefasHoje] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
@@ -97,58 +81,46 @@ export default function Dashboard() {
         { data: eventsData },
         { data: processesData },
         { data: revenueChartData },
-        { data: areasData }
+        { data: areasData },
+        { data: tarefasData },
       ] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }),
         supabase.from('processes').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
         supabase.from('processes').select('*', { count: 'exact', head: true }).eq('status', 'encerrado'),
-        supabase.from('events').select('*', { count: 'exact', head: true })
-          .gte('date', todayStr).lte('date', weekEnd).eq('completed', false),
-        supabase.from('events').select('*', { count: 'exact', head: true })
-          .eq('type', 'prazo').lt('date', todayStr).eq('completed', false),
-        supabase.from('events').select('*', { count: 'exact', head: true })
-          .eq('type', 'prazo').eq('date', todayStr).eq('completed', false),
-        supabase.from('financial_records').select('amount')
-          .eq('status', 'pago').gte('paid_date', monthStart).lte('paid_date', monthEnd),
+        supabase.from('events').select('*', { count: 'exact', head: true }).gte('date', todayStr).lte('date', weekEnd).eq('completed', false),
+        supabase.from('events').select('*', { count: 'exact', head: true }).eq('type', 'prazo').lt('date', todayStr).eq('completed', false),
+        supabase.from('events').select('*', { count: 'exact', head: true }).eq('type', 'prazo').eq('date', todayStr).eq('completed', false),
+        supabase.from('financial_records').select('amount').eq('status', 'pago').gte('paid_date', monthStart).lte('paid_date', monthEnd),
         supabase.from('financial_records').select('amount').eq('status', 'pendente'),
         supabase.from('financial_records').select('amount, due_date').eq('status', 'atrasado'),
         supabase.from('documents').select('*', { count: 'exact', head: true }),
-        supabase.from('events').select('id, title, type, date, time, clients(name)')
-          .gte('date', todayStr).eq('completed', false)
-          .order('date', { ascending: true }).limit(5),
-        supabase.from('processes').select('id, number, area, status, clients(name), updated_at')
-          .order('updated_at', { ascending: false }).limit(5),
-        supabase.from('financial_records').select('amount, paid_date')
-          .eq('status', 'pago').gte('paid_date', sixMonthsAgo).order('paid_date'),
-        supabase.from('processes').select('area').eq('status', 'ativo')
+        supabase.from('events').select('id, title, type, date, time, clients(name)').gte('date', todayStr).eq('completed', false).order('date', { ascending: true }).limit(5),
+        supabase.from('processes').select('id, number, area, status, clients(name), updated_at').order('updated_at', { ascending: false }).limit(5),
+        supabase.from('financial_records').select('amount, paid_date').eq('status', 'pago').gte('paid_date', sixMonthsAgo).order('paid_date'),
+        supabase.from('processes').select('area').eq('status', 'ativo'),
+        supabase.from('tasks').select('id, title, priority, status, due_date, clients(name)')
+          .neq('status', 'concluida')
+          .or(`due_date.eq.${todayStr},priority.eq.urgente`)
+          .order('priority', { ascending: true })
+          .limit(8),
       ])
 
       const totalRevenue = revenueData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
       const totalPendente = pendingData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
       const totalAtrasado = atrasadoData?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0
 
-      setStats({
-        clients: clientCount || 0, processes: processCount || 0,
-        processesEncerrados: processEncerradoCount || 0, events: eventCount || 0,
-        prazoVencido: prazoVencidoCount || 0, revenue: totalRevenue,
-        pendente: totalPendente, documentos: docCount || 0
-      })
+      setStats({ clients: clientCount || 0, processes: processCount || 0, processesEncerrados: processEncerradoCount || 0, events: eventCount || 0, prazoVencido: prazoVencidoCount || 0, revenue: totalRevenue, pendente: totalPendente, documentos: docCount || 0 })
       setUpcomingEvents(eventsData || [])
       setRecentProcesses(processesData || [])
+      setTarefasHoje(tarefasData || [])
 
-      // Alertas
       const newAlerts = []
-      if ((prazoHojeCount || 0) > 0)
-        newAlerts.push({ icon: '🚨', text: `${prazoHojeCount} prazo(s) vencendo HOJE`, color: '#dc2626', bg: '#fef2f2' })
-      if ((prazoVencidoCount || 0) > 0)
-        newAlerts.push({ icon: '⏰', text: `${prazoVencidoCount} prazo(s) vencido(s) não concluído(s)`, color: '#b45309', bg: '#fffbeb' })
-      if (totalAtrasado > 0)
-        newAlerts.push({ icon: '💸', text: `${atrasadoData?.length} honorário(s) em atraso — ${formatCurrency(totalAtrasado)}`, color: '#b45309', bg: '#fffbeb' })
-      if (newAlerts.length === 0)
-        newAlerts.push({ icon: '✅', text: 'Tudo em dia! Nenhum alerta no momento.', color: '#15803d', bg: '#f0fdf4' })
+      if ((prazoHojeCount || 0) > 0) newAlerts.push({ icon: '🚨', text: `${prazoHojeCount} prazo(s) vencendo HOJE`, color: '#dc2626', bg: '#fef2f2' })
+      if ((prazoVencidoCount || 0) > 0) newAlerts.push({ icon: '⏰', text: `${prazoVencidoCount} prazo(s) vencido(s) não concluído(s)`, color: '#b45309', bg: '#fffbeb' })
+      if (totalAtrasado > 0) newAlerts.push({ icon: '💸', text: `${atrasadoData?.length} honorário(s) em atraso — ${formatCurrency(totalAtrasado)}`, color: '#b45309', bg: '#fffbeb' })
+      if (newAlerts.length === 0) newAlerts.push({ icon: '✅', text: 'Tudo em dia! Nenhum alerta no momento.', color: '#15803d', bg: '#f0fdf4' })
       setAlerts(newAlerts)
 
-      // Gráfico receita últimos 6 meses
       const monthsMap = {}
       for (let i = 5; i >= 0; i--) {
         const d = subMonths(today, i)
@@ -162,7 +134,6 @@ export default function Dashboard() {
       })
       setRevenueChart(Object.values(monthsMap))
 
-      // Gráfico processos por área
       const areaCount = {}
       areasData?.forEach(p => { areaCount[p.area] = (areaCount[p.area] || 0) + 1 })
       setAreasChart(Object.entries(areaCount).sort((a, b) => b[1] - a[1]))
@@ -173,6 +144,12 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function concluirTarefa(id) {
+    await supabase.from('tasks').update({ status: 'concluida' }).eq('id', id)
+    toast.success('Tarefa concluída!')
+    setTarefasHoje(prev => prev.filter(t => t.id !== id))
   }
 
   function formatCurrency(val) {
@@ -220,8 +197,51 @@ export default function Dashboard() {
         <StatCard icon="📄" label="Total de Documentos" value={stats.documentos} color="#8b5cf6" loading={loading} />
       </div>
 
-      {/* Gráficos */}
+      {/* Tarefas do dia + Gráfico receita */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
+
+        {/* Tarefas do dia */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">✅ Tarefas do Dia</h3>
+            {!loading && tarefasHoje.length > 0 && (
+              <span style={{ fontSize: 12, background: '#fef2f2', color: '#dc2626', padding: '2px 10px', borderRadius: 20, fontWeight: 700 }}>
+                {tarefasHoje.length} pendente(s)
+              </span>
+            )}
+          </div>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 44 }} />)}
+            </div>
+          ) : tarefasHoje.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">🎉</div>
+              <div className="empty-state-text">Nenhuma tarefa urgente hoje!</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {tarefasHoje.map(t => {
+                const vencida = t.due_date && isPast(parseISO(t.due_date)) && !isToday(parseISO(t.due_date))
+                const cor = PRIORIDADE_COR[t.priority] || '#6b7280'
+                return (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: vencida ? '#fef2f2' : '#f9fafb', border: `1px solid ${vencida ? '#fecaca' : '#e5e7eb'}` }}>
+                    <button
+                      onClick={() => concluirTarefa(t.id)}
+                      style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${cor}`, background: '#fff', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                    >
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                      <div style={{ fontSize: 11, color: cor, fontWeight: 700, textTransform: 'uppercase' }}>{t.priority}{vencida ? ' · VENCIDA' : ''}</div>
+                    </div>
+                    {t.due_date && <span style={{ fontSize: 11, color: vencida ? '#dc2626' : '#6b7280', flexShrink: 0 }}>{formatDate(t.due_date)}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Receita mensal */}
         <div className="card">
@@ -237,18 +257,17 @@ export default function Dashboard() {
                   <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600 }}>
                     {m.value > 0 ? 'R$' + (m.value / 1000).toFixed(1) + 'k' : ''}
                   </div>
-                  <div style={{
-                    width: '100%', borderRadius: '4px 4px 0 0',
-                    background: m.value > 0 ? '#C9A84C' : '#e5e7eb',
-                    height: Math.max((m.value / maxRevenue) * 88, m.value > 0 ? 6 : 4),
-                    transition: 'height 0.3s ease'
-                  }} />
+                  <div style={{ width: '100%', borderRadius: '4px 4px 0 0', background: m.value > 0 ? '#C9A84C' : '#e5e7eb', height: Math.max((m.value / maxRevenue) * 88, m.value > 0 ? 6 : 4), transition: 'height 0.3s ease' }} />
                   <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{m.label}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </div>
+
+      {/* Gráfico áreas + Próximos eventos */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 20 }}>
 
         {/* Processos por área */}
         <div className="card">
@@ -260,9 +279,7 @@ export default function Dashboard() {
               {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 24 }} />)}
             </div>
           ) : areasChart.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280', fontSize: 13 }}>
-              Nenhum processo ativo
-            </div>
+            <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280', fontSize: 13 }}>Nenhum processo ativo</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {areasChart.slice(0, 5).map(([area, count]) => (
@@ -272,22 +289,14 @@ export default function Dashboard() {
                     <span style={{ color: '#6b7280' }}>{count}</span>
                   </div>
                   <div style={{ height: 8, background: '#f3f4f6', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', borderRadius: 4,
-                      background: AREA_COLORS[area] || '#6b7280',
-                      width: `${(count / maxArea) * 100}%`,
-                      transition: 'width 0.3s ease'
-                    }} />
+                    <div style={{ height: '100%', borderRadius: 4, background: AREA_COLORS[area] || '#6b7280', width: `${(count / maxArea) * 100}%`, transition: 'width 0.3s ease' }} />
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Eventos e Processos */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
         {/* Próximos eventos */}
         <div className="card">
           <div className="card-header">
@@ -307,26 +316,13 @@ export default function Dashboard() {
               {upcomingEvents.map(ev => {
                 const isUrgent = ev.date <= format(addDays(new Date(), 3), 'yyyy-MM-dd')
                 return (
-                  <div key={ev.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 12px', borderRadius: 8,
-                    background: isUrgent ? '#fef2f2' : '#f9fafb',
-                    border: `1px solid ${isUrgent ? '#fecaca' : '#e5e7eb'}`
-                  }}>
+                  <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, background: isUrgent ? '#fef2f2' : '#f9fafb', border: `1px solid ${isUrgent ? '#fecaca' : '#e5e7eb'}` }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: eventTypeColors[ev.type] || '#6b7280', flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ev.title}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#6b7280' }}>
-                        {formatDate(ev.date)}{ev.time ? ` - ${ev.time.slice(0,5)}` : ''} • {ev.clients?.name || 'Sem cliente'}
-                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(ev.date)}{ev.time ? ` - ${ev.time.slice(0,5)}` : ''} • {ev.clients?.name || 'Sem cliente'}</div>
                     </div>
-                    <span style={{
-                      fontSize: 11, padding: '2px 8px', borderRadius: 20,
-                      background: eventTypeColors[ev.type] + '20', color: eventTypeColors[ev.type],
-                      fontWeight: 600, flexShrink: 0
-                    }}>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: eventTypeColors[ev.type] + '20', color: eventTypeColors[ev.type], fontWeight: 600, flexShrink: 0 }}>
                       {eventTypeLabels[ev.type]}
                     </span>
                   </div>
@@ -335,45 +331,45 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Processos recentes */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">⚖️ Processos Recentes</h3>
+      {/* Processos recentes */}
+      <div className="card">
+        <div className="card-header">
+          <h3 className="card-title">⚖️ Processos Recentes</h3>
+        </div>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 56 }} />)}
           </div>
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 56 }} />)}
-            </div>
-          ) : recentProcesses.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">⚖️</div>
-              <div className="empty-state-text">Nenhum processo cadastrado</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {recentProcesses.map(proc => (
-                <div key={proc.id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 12px', borderRadius: 8,
-                  background: '#f9fafb', border: '1px solid #e5e7eb', gap: 8
-                }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {proc.number}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>
-                      {proc.clients?.name || 'Sem cliente'} • {proc.area}
+        ) : recentProcesses.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">⚖️</div>
+            <div className="empty-state-text">Nenhum processo cadastrado</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {recentProcesses.map(proc => {
+              const statusStyle = {
+                ativo:     { bg: '#f0fdf4', border: '#bbf7d0', dot: '#22c55e' },
+                suspenso:  { bg: '#fffbeb', border: '#fde68a', dot: '#f59e0b' },
+                encerrado: { bg: '#f9fafb', border: '#e5e7eb', dot: '#9ca3af' },
+              }[proc.status] || { bg: '#f9fafb', border: '#e5e7eb', dot: '#9ca3af' }
+              return (
+                <div key={proc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 8, background: statusStyle.bg, border: `1px solid ${statusStyle.border}`, gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: statusStyle.dot, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#1A1A2E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proc.number}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>{proc.clients?.name || 'Sem cliente'} • {proc.area}</div>
                     </div>
                   </div>
-                  <span className={`badge ${statusColors[proc.status] || 'badge-gray'}`}>
-                    {proc.status}
-                  </span>
+                  <span className={`badge ${statusColors[proc.status] || 'badge-gray'}`}>{proc.status}</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -114,6 +114,20 @@ export default function Clients() {
     try { return format(new Date(d), 'dd/MM/yyyy') } catch { return d }
   }
 
+  function exportarCSV() {
+    const linhas = [
+      ['Nome', 'CPF/CNPJ', 'Telefone', 'Email', 'Endereço', 'Observações', 'Cadastro'],
+      ...clients.map(c => [c.name, c.cpf_cnpj || '', c.phone || '', c.email || '', c.address || '', c.notes || '', formatDate(c.created_at)])
+    ]
+    const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'clientes_jurisflow.csv'; a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Exportado com sucesso!')
+  }
+
   const filtered = clients.filter(c =>
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
     c.cpf_cnpj?.includes(search) ||
@@ -127,7 +141,10 @@ export default function Clients() {
           <h2 className="page-title">Clientes</h2>
           <p className="page-subtitle">{clients.length} cliente(s) cadastrado(s)</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>+ Novo Cliente</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" onClick={exportarCSV}>⬇️ Exportar</button>
+          <button className="btn-primary" onClick={openNew}>+ Novo Cliente</button>
+        </div>
       </div>
 
       <div className="filters-bar">

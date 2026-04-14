@@ -210,6 +210,20 @@ export default function Processes() {
     try { const [y,m,day] = d.split('T')[0].split('-'); return `${day}/${m}/${y}` } catch { return d }
   }
 
+  function exportarCSV() {
+    const linhas = [
+      ['Número', 'Cliente', 'Área', 'Fase', 'Status', 'Descrição', 'Cadastro'],
+      ...processes.map(p => [p.number, p.clients?.name || '', p.area, p.phase || '', p.status, p.description || '', formatDate(p.created_at)])
+    ]
+    const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'processos_jurisflow.csv'; a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Exportado com sucesso!')
+  }
+
   const filtered = processes.filter(p => {
     const matchSearch = !search ||
       p.number?.toLowerCase().includes(search.toLowerCase()) ||
@@ -226,7 +240,10 @@ export default function Processes() {
           <h2 className="page-title">Processos</h2>
           <p className="page-subtitle">{processes.length} processo(s)</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>+ Novo Processo</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary" onClick={exportarCSV}>⬇️ Exportar</button>
+          <button className="btn-primary" onClick={openNew}>+ Novo Processo</button>
+        </div>
       </div>
 
       <div className="filters-bar">
