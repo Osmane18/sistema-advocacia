@@ -10,8 +10,9 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     storageKey: 'sistema-advocacia-auth',
-    autoRefreshToken: true,
+    autoRefreshToken: false,
     persistSession: true,
     detectSessionInUrl: false,
+    lock: async (_name, _acquireTimeout, fn) => fn()
   }
 })
