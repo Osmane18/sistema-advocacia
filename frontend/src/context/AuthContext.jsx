@@ -52,11 +52,25 @@ export function AuthProvider({ children }) {
     // onAuthStateChange dispara INITIAL_SESSION imediatamente no Supabase v2
     // e trata todos os eventos subsequentes (login, logout, refresh de token)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         clearTimeout(timeout)
         setUser(session?.user ?? null)
-        if (session?.user) await fetchProfile(session.user.id)
-        else setProfile(null)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+          // Registra log apenas no login real (não em refresh de token ou carregamento de página)
+          if (event === 'SIGNED_IN') {
+            const { data: perfil } = await supabase
+              .from('user_profiles')
+              .select('full_name')
+              .eq('id', session.user.id)
+              .single()
+            await supabase.from('login_logs').insert({
+              user_id: session.user.id,
+              user_name: perfil?.full_name || session.user.email,
+              email: session.user.email,
+            })
+          }
+        } else setProfile(null)
         setLoading(false)
       }
     )

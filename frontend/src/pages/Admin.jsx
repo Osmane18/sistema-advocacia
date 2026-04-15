@@ -18,8 +18,10 @@ export default function Admin() {
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ total: 0, pendentes: 0, aprovados: 0, expirados: 0 })
+  const [logs, setLogs] = useState([])
+  const [loadingLogs, setLoadingLogs] = useState(true)
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar(); carregarLogs() }, [])
 
   async function carregar() {
     setLoading(true)
@@ -47,6 +49,19 @@ export default function Admin() {
       setUsuarios(perfis)
     }
     setLoading(false)
+  }
+
+  async function carregarLogs() {
+    setLoadingLogs(true)
+    try {
+      const { data } = await supabase
+        .from('login_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100)
+      setLogs(data || [])
+    } catch {}
+    finally { setLoadingLogs(false) }
   }
 
   async function aprovar(usuario, dias = 30) {
@@ -226,6 +241,45 @@ export default function Admin() {
           </table>
         </div>
       </div>
+
+      {/* Histórico de Acessos */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: 24 }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>📋 Histórico de Acessos</div>
+          <button onClick={carregarLogs} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#6b7280' }}>
+            ↻ Atualizar
+          </button>
+        </div>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Email</th>
+                <th>Data</th>
+                <th>Hora</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingLogs ? (
+                Array(3).fill(0).map((_, i) => (
+                  <tr key={i}>{Array(4).fill(0).map((_, j) => <td key={j}><div className="skeleton" style={{ height: 18 }} /></td>)}</tr>
+                ))
+              ) : logs.length === 0 ? (
+                <tr><td colSpan={4}><div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">Nenhum acesso registrado ainda</div></div></td></tr>
+              ) : logs.map(log => (
+                <tr key={log.id}>
+                  <td style={{ fontWeight: 600 }}>{log.user_name || '—'}</td>
+                  <td style={{ fontSize: 13, color: '#6b7280' }}>{log.email || '—'}</td>
+                  <td style={{ fontSize: 13 }}>{format(new Date(log.created_at), 'dd/MM/yyyy')}</td>
+                  <td style={{ fontSize: 13, color: '#6b7280' }}>{format(new Date(log.created_at), 'HH:mm')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   )
 }
