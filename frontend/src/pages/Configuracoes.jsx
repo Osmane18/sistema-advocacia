@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
 
 const emptyForm = {
   name: '',
@@ -21,12 +22,28 @@ function maskCNPJ(v) {
 }
 
 export default function Configuracoes() {
+  const { user } = useAuth()
   const [form, setForm] = useState(emptyForm)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [officeId, setOfficeId] = useState(null)
   const [fazendoBackup, setFazendoBackup] = useState(false)
   const [ultimoBackup, setUltimoBackup] = useState(() => localStorage.getItem('ultimo_backup') || null)
+  const [novaSenha, setNovaSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
+  const [alterandoSenha, setAlterandoSenha] = useState(false)
+
+  async function alterarSenha() {
+    if (!novaSenha || novaSenha.length < 6) return toast.error('A senha deve ter pelo menos 6 caracteres')
+    if (novaSenha !== confirmarSenha) return toast.error('As senhas não coincidem')
+    setAlterandoSenha(true)
+    const { error } = await supabase.auth.updateUser({ password: novaSenha })
+    setAlterandoSenha(false)
+    if (error) return toast.error('Erro: ' + error.message)
+    toast.success('Senha alterada com sucesso!')
+    setNovaSenha('')
+    setConfirmarSenha('')
+  }
 
   useEffect(() => { loadOffice() }, [])
 
@@ -260,6 +277,30 @@ export default function Configuracoes() {
           <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center' }}>
             O arquivo será salvo na pasta de Downloads do seu computador
           </p>
+        </div>
+      </div>
+
+      {/* Alterar Senha */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: '#1A1A2E' }}>🔑 Alterar Senha</h3>
+        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+          {user?.email}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Nova senha</label>
+            <input type="password" value={novaSenha} onChange={e => setNovaSenha(e.target.value)}
+              placeholder="Mínimo 6 caracteres" className="form-input" />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>Confirmar nova senha</label>
+            <input type="password" value={confirmarSenha} onChange={e => setConfirmarSenha(e.target.value)}
+              placeholder="Repita a senha" className="form-input" />
+          </div>
+          <button onClick={alterarSenha} disabled={alterandoSenha}
+            style={{ background: '#1B2B4B', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: alterandoSenha ? 0.7 : 1 }}>
+            {alterandoSenha ? 'Alterando...' : 'Alterar Senha'}
+          </button>
         </div>
       </div>
 
