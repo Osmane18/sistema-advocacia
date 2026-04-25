@@ -13,6 +13,7 @@ import Perfil from './pages/Perfil'
 import Admin from './pages/Admin'
 import Configuracoes from './pages/Configuracoes'
 import Tasks from './pages/Tasks'
+import NovaSenha from './pages/NovaSenha'
 
 function Carregando() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
+      <Route path="/nova-senha" element={<NovaSenha />} />
       <Route
         path="/"
         element={
