@@ -28,10 +28,10 @@ export default function Cadastro() {
       })
       if (error) throw error
 
-      // Atualiza whatsapp no perfil
+      // Atualiza perfil com email, nome e whatsapp
       if (data.user) {
         await supabase.from('user_profiles')
-          .update({ whatsapp: form.whatsapp, full_name: form.nome })
+          .update({ whatsapp: form.whatsapp, full_name: form.nome, email: form.email })
           .eq('id', data.user.id)
       }
 
